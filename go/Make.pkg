@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
-DIAMONDROOT=/home/ole/work/diamond/go
+DIAMONDROOT=$(HOME)/work/diamond-lang/go
 all: package install clean
 package: _obj/$(TARG).a
 #testpackage: _test/$(TARG).a
