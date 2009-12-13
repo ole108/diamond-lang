@@ -1,0 +1,75 @@
+Got token: <TOK CONST ID> BLA
+Got token: <TOK COLON> :
+Got token: <TOK NL> 
+
+Got token: <TOK PAREN OPEN> (
+Got token: <TOK CONST ID> E
+Got token: <TOK OP ID> =
+Got int: 2 2
+Got token: <TOK OP ID> *
+Got int: 3 3
+Got token: <TOK PAREN CLOSE> )
+Got token: <TOK OP ID> &
+Got token: <TOK PAREN OPEN> [
+Got token: <TOK PAREN OPEN> {
+Got token: <TOK CONST ID> TRUE
+Got token: <TOK OP ID> ?
+Got token: <TOK PAREN OPEN> (
+Got int: 31 0x01_F
+Got token: <TOK PAREN CLOSE> )
+Got token: <TOK OP ID> +
+Got token: <TOK CONST ID> PI_HOCH_2
+Got token: <TOK OP ID> ^
+Got int: 1230 001230
+Got token: <TOK PAREN CLOSE> }
+Got int: 15 0c17
+Got token: <TOK OP ID> *
+Got int: 6 0b0110
+Got token: <TOK PAREN CLOSE> ]
+Got token: <TOK OP ID> -/-
+Got int: 36 0r036_10
+Got token: <TOK NL> 
+
+Got token: <TOK FUNC ID> If
+Got token: <TOK MODULE ID> bla
+Got token: <TOK OP ID> >
+Got int: 0 0
+Got token: <TOK COLON> :
+Got token: <TOK NL> 
+
+Got token: <TOK INDENT>     
+Got token: <TOK FUNC ID> mod.Func
+Got token: <TOK CONST ID> mod.CONST
+Got token: <TOK CONST ID> mod.CONST.val
+Got token: <TOK FUNC ID> Fn
+Got token: <TOK MODULE ID> i
+Got token: <TOK NL> 
+
+Got dedentation: 1
+Got token: <TOK FUNC ID> Elif
+Got token: <TOK MODULE ID> bla
+Got token: <TOK OP ID> <
+Got int: 0 0
+Got token: <TOK COLON> :
+Got token: <TOK NL> 
+
+Got token: <TOK HALF INDENT>     
+Got token: <TOK FUNC ID> mod.FuncAli
+Got token: <TOK MODULE ID> bla
+Got token: <TOK NL> 
+
+Got dedentation: 1
+Got token: <TOK FUNC ID> Else
+Got token: <TOK COLON> :
+Got token: <TOK NL> 
+
+Got token: <TOK HALF INDENT>     
+Got token: <TOK VAL ID> bla.val
+Got token: <TOK NL> 
+
+Got dedentation: 2
+Got token: <TOK MODULE ID> bla
+Got token: <TOK OP ID> =
+Got int: 0 0
+Got token: <TOK NL> 
+

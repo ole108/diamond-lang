@@ -1,0 +1,10 @@
+#!/bin/sh
+
+PROG=main
+
+rm -f "../$PROG" 8.out *.8
+
+8g -I "/home/ole/work/diamond/go/pkg/linux_386/" "$PROG.go" || exit 1
+8l -L "/home/ole/work/diamond/go/pkg/linux_386/" -o "../$PROG" "$PROG.8"
+
+rm -f "$PROG.8"
