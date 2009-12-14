@@ -70,7 +70,7 @@ func (te TokEnum) String() string {
   case TOK_BLOCK_START:  ret = "<TOK BLOCK START>";
 //case TOK_COMMENT:      ret = "<TOK COMMENT>";
   case TOK_CONST_ID:     ret = "<TOK CONST ID>";
-  case TOK_MODULE_ID:     ret = "<TOK MODULE ID>";
+  case TOK_MODULE_ID:    ret = "<TOK MODULE ID>";
   case TOK_VAL_ID:       ret = "<TOK VAL ID>";
   case TOK_FUNC_ID:      ret = "<TOK FUNC ID>";
   case TOK_OP_ID:        ret = "<TOK OP ID>";

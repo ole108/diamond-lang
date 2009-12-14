@@ -5,7 +5,7 @@
 DIAMONDROOT=$(HOME)/work/diamond-lang/go
 all: package install clean
 package: _obj/$(TARG).a
-#testpackage: _test/$(TARG).a
+testpackage: _test/$(TARG).a
 
 # GNU Make 3.80 has a bug in lastword
 # elem=$(lastword $(subst /, ,$(TARG)))
@@ -39,13 +39,13 @@ clean:
 	rm -rf *.[$(OS)o] *.a [$(OS)].out *.cgo[12].go *.cgo[34].c *.so _obj _test _testmain.go $(CLEANFILES)
 
 test:
-#	gotest
+	gotest
 
 nuke: clean
 	rm -f $(pkgdir)/$(TARG).a
 
-#testpackage-clean:
-#	rm -f _test/$(TARG).a _gotest_.$O
+testpackage-clean:
+	rm -f _test/$(TARG).a _gotest_.$O
 
 install: $(INSTALLFILES)
 
