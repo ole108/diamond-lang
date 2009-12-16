@@ -1,9 +1,9 @@
 package main
 
 import (
-  "common";
-  "srcbuf";
-  "lexer";
+  "diamondlang/common";
+  "diamondlang/srcbuf";
+  "diamondlang/lexer";
   "os";
   "flag";
   "fmt";

@@ -2,7 +2,7 @@ package srcbuf
 
 import (
   "testing";
-  "common";
+  "diamondlang/common";
 )
 
 

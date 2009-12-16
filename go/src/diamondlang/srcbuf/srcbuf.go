@@ -1,7 +1,7 @@
 package srcbuf
 
 import (
-  "common";
+  "diamondlang/common";
   "io/ioutil";
   "os";
 //"fmt";
