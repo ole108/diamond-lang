@@ -47,7 +47,7 @@ func (lx *Lexer) GetToken() common.Token {
   tok := common.Token(nil);
   lxFuncs := []lexFunc{
       tryEof, tryIndent, skipComment, tryNewLine, trySemicolon, tryColon, tryParen,
-      tryNumber, tryOperator, tryId,
+      tryNumber, tryOperator, tryId, tryChar,
       skipSpaces, signalUndefined
   // NEXT: 
   };

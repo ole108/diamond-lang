@@ -21,13 +21,13 @@ func tryIndent(lx *Lexer) (tok common.Token, moved bool) {
 
     // ignore comment and empty lines
     // (EOF will be handled later):
-    tok1, mov1 := skipComment(lx);
-    tok2, mov2 := tryNewLine(lx);
+    _, mov1 := skipComment(lx);
+    _, mov2 := tryNewLine(lx);
 
     // did we move in any way?
     if spaces > 0 || mov1 || mov2 { moved = true; }
 
-    if tok1 == nil && tok2 == nil {
+    if !mov1 && !mov2 {
       // return indent token
       tok = spaces2tok(lx, mark, spaces);
       if tok != nil {
@@ -309,6 +309,18 @@ func readExplicitBase(lx *Lexer) int {
   if err != nil { lx.srcBuf.Error(err.String()) }
   if val > 36 || val < 2 { lx.srcBuf.Error("Invalid integer base") }
   return val;
+}
+
+func tryChar(lx *Lexer) (tok common.Token, moved bool) {
+  if lx.curChar == '\'' {
+    mark := lx.srcBuf.NewMark();
+    lx.nextChar();
+    if lx.curChar == '\\' { lx.nextChar(); }
+    lx.nextChar();
+    if lx.curChar != '\'' { lx.srcBuf.Error("Invalid character token"); }
+    tok, moved = lx.newToken(common.TOK_CHAR, mark), true;
+  }
+  return;
 }
 
 func tryNewLine(lx *Lexer) (tok common.Token, moved bool) {

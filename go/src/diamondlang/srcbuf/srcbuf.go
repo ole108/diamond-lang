@@ -73,7 +73,10 @@ func (sb *SrcBuffer) Ungetch() {
 // get the next character from the source code
 func (sb *SrcBuffer) Getch() byte {
   // handle EOF
-  if sb.pos+1 >= sb.size  { return common.EOF }
+  if sb.pos+1 >= sb.size  {
+    sb.pos = sb.size;
+    return common.EOF
+  }
 
   // read and check new character
   sb.pos++;
