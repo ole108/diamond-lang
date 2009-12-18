@@ -315,20 +315,122 @@ func tryChar(lx *Lexer) (tok common.Token, moved bool) {
   if lx.curChar == '\'' {
     mark := lx.srcBuf.NewMark();
     lx.nextChar();
-    if lx.curChar == '\\' { lx.nextChar(); }
-    lx.nextChar();
+    char := readEscChar(lx);
     if lx.curChar != '\'' { lx.srcBuf.Error("Invalid character token"); }
-    tok, moved = lx.newToken(common.TOK_CHAR, mark), true;
+    tok, moved = lx.newCharTok(mark, char), true;
   }
   return;
+}
+
+func readEscChar(lx *Lexer) byte {
+  escaped := false;
+  if lx.curChar == '\\' {
+    escaped = true;
+    lx.nextChar();
+  }
+  char := escaped2char(escaped, lx.curChar, lx);
+  lx.nextChar();
+  return char;
+}
+
+func escaped2char(escaped bool, char byte, lx *Lexer) byte {
+  ret := char;
+  if escaped && (isDigit(char) || isLower(char)) {
+    switch char {
+    case '0':  ret = 0;
+    case 'a':  ret = '\a';
+    case 'b':  ret = '\b';
+    case 'd':  ret = 127;   // DEL
+    case 'e':  ret = 27;    // ESC
+    case 'f':  ret = '\f';
+    case 'n':  ret = '\n';
+    case 'r':  ret = '\r';
+    case 't':  ret = '\t';
+    case 'v':  ret = '\v';
+    default:   lx.srcBuf.Error("Invalid escape character");
+    }
+  }
+  return ret;
+}
+
+func tryString(lx *Lexer) (tok common.Token, moved bool) {
+  if lx.curChar == '"' {
+    mark := lx.srcBuf.NewMark();
+    str := readString(lx.curChar, lx, readEscString);
+    tok, moved = lx.newStringTok(mark, str), true;
+  } else if lx.curChar == '`' {
+    mark := lx.srcBuf.NewMark();
+    str := readString(lx.curChar, lx, readRawString);
+    tok, moved = lx.newStringTok(mark, str), true;
+  }
+  return;
+}
+
+func readString(delim byte, lx *Lexer, readTypString func(*Lexer,byte,int)string) string {
+  cnt := readCharCount(lx.curChar, lx, 9);
+  ret := "";
+  if cnt == 1 {
+    ret = readTypString(lx, delim, 1);
+  } else if cnt == 2 {
+    ret = "";
+  } else if cnt == 3 {
+    ret = readTypString(lx, delim, 3);
+  } else if cnt < 6 {
+    ret = strings.Repeat(string(delim), cnt - 3) + readTypString(lx, delim, 3);
+  } else if cnt == 6 {
+    ret = "";
+  } else if cnt < 9 {
+    ret = strings.Repeat(string(delim), cnt - 6);
+  } else {
+    lx.srcBuf.Error("Illegal number of consecutive string delimiters");
+  }
+  return ret;
+}
+
+func readRawString(lx *Lexer, delim byte, max int) string {
+  ret := "";
+  cnt := 0;
+  for cnt < max && lx.curChar != common.EOF {
+    for lx.curChar != delim && lx.curChar != common.EOF {
+      ret += string(lx.curChar);
+      lx.nextChar();
+    }
+    cnt = readCharCount(delim, lx, max);
+    if cnt < max { ret += strings.Repeat(string(delim), cnt); }
+  }
+  return ret;
+}
+
+func readEscString(lx *Lexer, delim byte, max int) string {
+  ret := "";
+  cnt := 0;
+  for cnt < max && lx.curChar != common.EOF {
+    for lx.curChar != delim && lx.curChar != common.EOF {
+      if max <= 1 && (lx.curChar == '\n' || lx.curChar == '\r') {
+        lx.srcBuf.Error("Simple strings can't span multiple lines");
+      }
+      ret += string(readEscChar(lx));
+    }
+    cnt = readCharCount(delim, lx, max);
+    if cnt < max { ret += strings.Repeat(string(delim), cnt); }
+  }
+  return ret;
+}
+
+func readCharCount(char byte, lx *Lexer, max int) int {
+  ret := 0;
+  for lx.curChar == char && ret < max {
+    ret++;
+    lx.nextChar();
+  }
+  return ret;
 }
 
 func tryNewLine(lx *Lexer) (tok common.Token, moved bool) {
   if lx.curChar == '\n' || lx.curChar == '\r' {
     mark := lx.srcBuf.NewMark();
     readNewLine(lx);
-    moved = true;
-    tok = makeNewLineTok(lx, mark);
+    tok, moved = makeNewLineTok(lx, mark), true;
   }
   return;
 }

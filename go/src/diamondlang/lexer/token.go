@@ -67,6 +67,28 @@ func (lx *Lexer) newIntTok(mark common.SrcMark, val int64) *IntTok {
 }
 func (tok *IntTok) Value() int64 { return tok.value }
 
+/// CharTok - Signal a character constant.
+type CharTok struct {
+  *SimpleToken;
+  value byte;
+}
+func (lx *Lexer) newCharTok(mark common.SrcMark, val byte) *CharTok {
+  tok := lx.newToken(common.TOK_CHAR, mark);
+  return &CharTok{tok, val};
+}
+func (tok *CharTok) Value() byte { return tok.value }
+
+/// StringTok - Signal a string constant.
+type StringTok struct {
+  *SimpleToken;
+  value string;
+}
+func (lx *Lexer) newStringTok(mark common.SrcMark, val string) *StringTok {
+  tok := lx.newToken(common.TOK_CHAR, mark);
+  return &StringTok{tok, val};
+}
+func (tok *StringTok) Value() string { return tok.value }
+
 /// MultiDedentTok - Signal multiple dedentations.
 type MultiDedentTok struct {
   *SimpleToken;
