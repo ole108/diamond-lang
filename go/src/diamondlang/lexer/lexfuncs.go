@@ -317,6 +317,7 @@ func tryChar(lx *Lexer) (tok common.Token, moved bool) {
     lx.nextChar();
     char := readEscChar(lx);
     if lx.curChar != '\'' { lx.srcBuf.Error("Invalid character token"); }
+    lx.nextChar();
     tok, moved = lx.newCharTok(mark, char), true;
   }
   return;

@@ -124,6 +124,23 @@ bla = 0
   testStringVsTokens(t, testStr, testToks);
 }
 
+func TestCharsStrings(t *testing.T) {
+  testStr := "'c'    'h' '\\t' '\\a' '\\r' '\\n' \n" ;
+//           "\"bla\\r\\n\" \"blue\\t\\a\\0\\n\"" ;
+
+  testToks := []*tstTok{
+    &tstTok{common.TOK_CHAR, "'c'", true, int64('c')},
+    &tstTok{common.TOK_CHAR, "'h'", true, int64('h')},
+    &tstTok{common.TOK_CHAR, "'\\t'", true, int64('\t')},
+    &tstTok{common.TOK_CHAR, "'\\a'", true, int64('\a')},
+    &tstTok{common.TOK_CHAR, "'\\r'", true, int64('\r')},
+    &tstTok{common.TOK_CHAR, "'\\n'", true, int64('\n')},
+    &tstTok{common.TOK_NL, "\n", false, 0},
+  };
+
+  testStringVsTokens(t, testStr, testToks);
+}
+
 func testStringVsTokens(t *testing.T, str string, toks []*tstTok) {
   lx := NewLexer(srcbuf.NewSourceFromBuffer(strings.Bytes(str), "TestTokens"));
   var tok common.Token;
@@ -136,6 +153,13 @@ func testStringVsTokens(t *testing.T, str string, toks []*tstTok) {
         t.Errorf("Expected token type %v, but got: %v.\n", toks[i].typ, typ.Type());
       }
       if toks[i].numVal != typ.Value() {
+        t.Errorf("Expected value %v, but got: %v.\n", toks[i].numVal, typ.Value());
+      }
+    case *CharTok:
+      if toks[i].typ != typ.Type() {
+        t.Errorf("Expected token type %v, but got: %v.\n", toks[i].typ, typ.Type());
+      }
+      if toks[i].numVal != int64(typ.Value()) {
         t.Errorf("Expected value %v, but got: %v.\n", toks[i].numVal, typ.Value());
       }
     case *MultiDedentTok:
