@@ -84,7 +84,7 @@ type StringTok struct {
   value string;
 }
 func (lx *Lexer) newStringTok(mark common.SrcMark, val string) *StringTok {
-  tok := lx.newToken(common.TOK_CHAR, mark);
+  tok := lx.newToken(common.TOK_STR, mark);
   return &StringTok{tok, val};
 }
 func (tok *StringTok) Value() string { return tok.value }
