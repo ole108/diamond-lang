@@ -25,6 +25,8 @@ const (
   TOK_INDENT;
   TOK_HALF_INDENT;
   TOK_MULTI_DEDENT;
+  TOK_DEDENT;
+  TOK_HALF_DEDENT;
 
   // parentheses:
   TOK_PAREN_OPEN;
@@ -34,7 +36,8 @@ const (
   TOK_BLOCK_START;
 
   // comment ::= '#' ...
-//TOK_COMMENT;
+  TOK_COMMENT;
+  TOK_SPACE;
 
   // identifiers:
   TOK_VAL_ID;
@@ -65,10 +68,13 @@ func (te TokEnum) String() string {
   case TOK_INDENT:       ret = "<TOK INDENT>";
   case TOK_HALF_INDENT:  ret = "<TOK HALF INDENT>";
   case TOK_MULTI_DEDENT: ret = "<TOK MULTI DEDENT>";
+  case TOK_DEDENT:       ret = "<TOK DEDENT>";
+  case TOK_HALF_DEDENT:  ret = "<TOK HALF DEDENT>";
   case TOK_PAREN_OPEN:   ret = "<TOK PAREN OPEN>";
   case TOK_PAREN_CLOSE:  ret = "<TOK PAREN CLOSE>";
   case TOK_BLOCK_START:  ret = "<TOK BLOCK START>";
-//case TOK_COMMENT:      ret = "<TOK COMMENT>";
+  case TOK_COMMENT:      ret = "<TOK COMMENT>";
+  case TOK_SPACE:        ret = "<TOK SPACE>";
   case TOK_CONST_ID:     ret = "<TOK CONST ID>";
   case TOK_MODULE_ID:    ret = "<TOK MODULE ID>";
   case TOK_VAL_ID:       ret = "<TOK VAL ID>";
@@ -142,6 +148,7 @@ type SrcBuffer interface {
   Getch() byte;
   NewMark() SrcMark;
   NewPiece(start SrcMark) SrcPiece;
+  NewMultiPiece([]SrcPiece) SrcPiece;
 }
 
 // The interface all tokens returned from the Lexer implement
@@ -158,5 +165,13 @@ type Token interface {
 
 type Lexer interface {
   GetToken() Token;
+  NewCopyTok(TokEnum, Token) Token;
+  NewMultiTok(TokEnum, []Token) Token;
+  Error(msg string);
+}
+
+type TokenBuffer interface {
+  GetToken() Token;
+  Error(msg string);
 }
 

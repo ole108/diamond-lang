@@ -69,7 +69,7 @@ func indent2tok(lx *Lexer, mark common.SrcMark, indent int) common.Token {
     lx.indentLevel+=2;
     tok = lx.newToken(common.TOK_INDENT, mark);
   default:
-    lx.srcBuf.Error("Indentation error");
+    lx.Error("Indentation error");
   }
 
   return tok;
@@ -231,7 +231,7 @@ func tryParen(lx *Lexer) (tok common.Token, moved bool) {
 
 func getParenOpen(lx *Lexer) common.Token {
   if lx.inParens >= len(lx.parenStack) {
-    lx.srcBuf.Error("Too deeply nested parentheses");
+    lx.Error("Too deeply nested parentheses");
   }
   mark := lx.srcBuf.NewMark();
   lx.parenStack[lx.inParens] = lx.curChar;
@@ -242,12 +242,12 @@ func getParenOpen(lx *Lexer) common.Token {
 
 func getParenClose(lx *Lexer) common.Token {
   if lx.inParens <= 0 {
-    lx.srcBuf.Error("Too many closing parentheses");
+    lx.Error("Too many closing parentheses");
   }
   mark := lx.srcBuf.NewMark();
   lx.inParens--;
   if lx.parenStack[lx.inParens] != openParen(lx.curChar, lx) {
-    lx.srcBuf.Error("Parentheses don't fit together");
+    lx.Error("Parentheses don't fit together");
   }
   lx.nextChar();
   return lx.newToken(common.TOK_PAREN_CLOSE, mark);
@@ -275,7 +275,7 @@ func readInt(lx *Lexer) int64 {
   var ret int64 = 0;
   if len(strVal) > 0 {
     val, err := strconv.Btoi64(strVal, base);
-    if err != nil { lx.srcBuf.Error(err.String()) }
+    if err != nil { lx.Error(err.String()) }
     ret = val;
   }
   return ret;
@@ -306,8 +306,8 @@ func readExplicitBase(lx *Lexer) int {
     strVal += string(lx.curChar);
   }
   val, err := strconv.Atoi(strVal);
-  if err != nil { lx.srcBuf.Error(err.String()) }
-  if val > 36 || val < 2 { lx.srcBuf.Error("Invalid integer base") }
+  if err != nil { lx.Error(err.String()) }
+  if val > 36 || val < 2 { lx.Error("Invalid integer base") }
   return val;
 }
 
@@ -316,7 +316,7 @@ func tryChar(lx *Lexer) (tok common.Token, moved bool) {
     mark := lx.srcBuf.NewMark();
     lx.nextChar();
     char := readEscChar(lx);
-    if lx.curChar != '\'' { lx.srcBuf.Error("Invalid character token"); }
+    if lx.curChar != '\'' { lx.Error("Invalid character token"); }
     lx.nextChar();
     tok, moved = lx.newCharTok(mark, char), true;
   }
@@ -348,7 +348,7 @@ func escaped2char(escaped bool, char byte, lx *Lexer) byte {
     case 'r':  ret = '\r';
     case 't':  ret = '\t';
     case 'v':  ret = '\v';
-    default:   lx.srcBuf.Error("Invalid escape character");
+    default:   lx.Error("Invalid escape character");
     }
   }
   return ret;
@@ -383,7 +383,7 @@ func readString(delim byte, lx *Lexer, readTypString func(*Lexer,byte,int)string
   } else if cnt < 9 {
     ret = strings.Repeat(string(delim), cnt - 6);
   } else {
-    lx.srcBuf.Error("Illegal number of consecutive string delimiters");
+    lx.Error("Illegal number of consecutive string delimiters");
   }
   return ret;
 }
@@ -408,7 +408,7 @@ func readEscString(lx *Lexer, delim byte, max int) string {
   for cnt < max && lx.curChar != common.EOF {
     for lx.curChar != delim && lx.curChar != common.EOF {
       if max <= 1 && (lx.curChar == '\n' || lx.curChar == '\r') {
-        lx.srcBuf.Error("Simple strings can't span multiple lines");
+        lx.Error("Simple strings can't span multiple lines");
       }
       ret += string(readEscChar(lx));
     }
@@ -500,7 +500,7 @@ func skipSpaces(lx *Lexer) (tok common.Token, moved bool) {
 }
 
 func signalUndefined(lx *Lexer) (tok common.Token, moved bool) {
-  lx.srcBuf.Error("Unknown token");
+  lx.Error("Unknown token");
   return nil, false;
 }
 

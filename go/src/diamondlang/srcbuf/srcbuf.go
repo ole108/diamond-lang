@@ -138,6 +138,23 @@ func (sb *SrcBuffer) NewPiece(start common.SrcMark) common.SrcPiece {
   return &SrcPiece{sb.line, col, sb.wholeLine, string(sb.buf[start.Pos():sb.pos])};
 }
 
+func (sb *SrcBuffer) NewMultiPiece(pieces []common.SrcPiece) common.SrcPiece {
+  if len(pieces) <= 0 {
+    sb.Error("Too few source pieces");
+  }
+  cnt  := "";
+  wl   := pieces[0].WholeLine();
+  line := pieces[0].Line();
+  for _, piece := range pieces {
+    if line < piece.Line() {
+      wl += "\n" + piece.WholeLine();
+      line = piece.Line();
+    }
+    cnt += piece.Content();
+  }
+  return &SrcPiece{pieces[0].Line(), pieces[0].Column(), wl, cnt};
+}
+
 func (piece *SrcPiece) Line() int { return piece.startLine }
 func (piece *SrcPiece) Column() int { return piece.startColumn }
 func (piece *SrcPiece) Content() string { return piece.content }

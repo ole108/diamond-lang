@@ -16,7 +16,19 @@ type SimpleToken struct {
 }
 
 func (lx *Lexer) newToken(typ common.TokEnum, mark common.SrcMark) *SimpleToken {
-  return &SimpleToken{typ, lx.srcBuf.NewPiece(mark)}
+  return &SimpleToken{typ, lx.srcBuf.NewPiece(mark)};
+}
+
+func (lx *Lexer) NewCopyTok(typ common.TokEnum, tok common.Token) common.Token {
+  return &SimpleToken{typ, lx.srcBuf.NewMultiPiece([]common.SrcPiece{tok})};
+}
+
+func (lx *Lexer) NewMultiTok(typ common.TokEnum, toks []common.Token) common.Token {
+  pieces := make([]common.SrcPiece, len(toks));
+  for i := 0; i < len(toks); i++ {
+    pieces[i] = toks[i];
+  }
+  return &SimpleToken{typ, lx.srcBuf.NewMultiPiece(pieces)};
 }
 
 func (tok *SimpleToken) Type() common.TokEnum { return tok.typ; }
@@ -95,13 +107,22 @@ type MultiDedentTok struct {
   dedent int;
 }
 func (lx *Lexer) newMultiDedentTok(dedent int) *MultiDedentTok {
-  if (dedent & 1) > 0 || dedent <= 0 { lx.srcBuf.Error("Indentation error"); }
+  if (dedent & 1) > 0 || dedent <= 0 { lx.Error("Indentation error"); }
 
   // dedent is always even; so we don't loose information:
   return &MultiDedentTok{lx.newToken(common.TOK_MULTI_DEDENT, lx.srcBuf.NewMark()),
                          dedent/2};
 }
 func (tok *MultiDedentTok) Dedent() int { return tok.dedent }
+func Tok2multiDedent(tok common.Token) *MultiDedentTok {
+  switch t := tok.(type) {
+  case *MultiDedentTok:
+    return t;
+  default:
+    tok.Error("Unable to convert to a multi dedentation token");
+  }
+  return nil;
+}
 
 type IdPart struct {
   typ common.TokEnum;

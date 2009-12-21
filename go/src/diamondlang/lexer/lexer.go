@@ -23,6 +23,10 @@ func NewLexer(sb common.SrcBuffer) common.Lexer {
   return lx;
 }
 
+func (lx *Lexer) Error(msg string) {
+  lx.srcBuf.Error(msg);
+}
+
 func (lx *Lexer) nextChar() {
   lx.curChar = lx.srcBuf.Getch();
 }
@@ -33,7 +37,7 @@ func openParen(ch byte, lx *Lexer) byte {
     case ')': ret = '(';
     case ']': ret = '[';
     case '}': ret = '{';
-    default: lx.srcBuf.Error("Unknown parenthesis type");
+    default: lx.Error("Unknown parenthesis type");
   }
   return ret;
 }
@@ -49,11 +53,10 @@ func (lx *Lexer) GetToken() common.Token {
       tryEof, tryIndent, skipComment, tryNewLine, trySemicolon, tryColon, tryParen,
       tryNumber, tryOperator, tryId, tryChar, tryString,
       skipSpaces, signalUndefined
-  // NEXT: 
   };
 
   tok = lx.getFirstTok(lxFuncs);
-//fmt.Println(">>> Got first token:", tok.Type(), tok);
+//fmt.Println(">>> Got token:", tok.Type(), tok);
 
   return tok;
 }
