@@ -10,69 +10,22 @@ import (
 
 type lexFunc func(*Lexer) (common.Token, bool)
 
-func tryIndent(lx *Lexer) (tok common.Token, moved bool) {
-  if lx.srcBuf.AtStartOfLine() && lx.inParens <= 0 {
+func trySpace(lx *Lexer) (tok common.Token, moved bool) {
+  atStart := lx.srcBuf.AtStartOfLine() && lx.inParens <= 0;
+  if common.IsSpace(lx.curChar) || atStart {
     mark := lx.srcBuf.NewMark();
-    // count spaces:
-    spaces := 0;
-    for ; common.IsSpace(lx.curChar); lx.nextChar() {
-      spaces += common.SpaceAmount(lx.curChar);
-    }
-
-    // ignore comment and empty lines
-    // (EOF will be handled later):
-    _, mov1 := skipComment(lx);
-    _, mov2 := tryNewLine(lx);
-
-    // did we move in any way?
-    if spaces > 0 || mov1 || mov2 { moved = true; }
-
-    if !mov1 && !mov2 {
-      // return indent token
-      tok = spaces2tok(lx, mark, spaces);
-      if tok != nil {
-        moved = true;
-        lx.srcBuf.NotAtStartOfLine();
-      }
-    }
+    tok, moved = lx.newSpaceTok(mark, countSpaces(lx), atStart), true;
+    lx.srcBuf.NotAtStartOfLine();
   }
-
   return;
 }
 
-func spaces2tok(lx *Lexer, mark common.SrcMark, spaces int) common.Token {
-  tok := common.Token(nil);
-
-  indent := spaces - lx.indentLevel*2;
-  if indent < 0 {
-    tok = lx.newMultiDedentTok(-indent);
-    lx.indentLevel += indent/2;
-  } else {
-    tok = indent2tok(lx, mark, indent);
+func countSpaces(lx *Lexer) int {
+  spaces := 0;
+  for ; common.IsSpace(lx.curChar); lx.nextChar() {
+    spaces += common.SpaceAmount(lx.curChar);
   }
-
-  return tok;
-}
-
-func indent2tok(lx *Lexer, mark common.SrcMark, indent int) common.Token {
-  tok := common.Token(nil);
-
-  // we can have half indentations (2 spaces) and
-  //             full indentations (4 spaces)
-  switch indent {
-  case  0:
-    tok = nil;  // no change in indentation
-  case  2:
-    lx.indentLevel++;
-    tok = lx.newToken(common.TOK_HALF_INDENT, mark);
-  case  4:
-    lx.indentLevel+=2;
-    tok = lx.newToken(common.TOK_INDENT, mark);
-  default:
-    lx.Error("Indentation error");
-  }
-
-  return tok;
+  return spaces;
 }
 
 func tryId(lx *Lexer) (tok common.Token, moved bool) {
@@ -356,11 +309,11 @@ func escaped2char(escaped bool, char byte, lx *Lexer) byte {
 
 func tryString(lx *Lexer) (tok common.Token, moved bool) {
   if lx.curChar == '"' {
-    mark := lx.srcBuf.NewMark();
+    mark := lx.srcBuf.NewMultiLineMark();
     str := readString(lx.curChar, lx, readEscString);
     tok, moved = lx.newStringTok(mark, str), true;
   } else if lx.curChar == '`' {
-    mark := lx.srcBuf.NewMark();
+    mark := lx.srcBuf.NewMultiLineMark();
     str := readString(lx.curChar, lx, readRawString);
     tok, moved = lx.newStringTok(mark, str), true;
   }
@@ -429,7 +382,7 @@ func readCharCount(char byte, lx *Lexer, max int) int {
 
 func tryNewLine(lx *Lexer) (tok common.Token, moved bool) {
   if lx.curChar == '\n' || lx.curChar == '\r' {
-    mark := lx.srcBuf.NewMark();
+    mark := lx.srcBuf.NewMultiLineMark();
     readNewLine(lx);
     tok, moved = makeNewLineTok(lx, mark), true;
   }
@@ -453,7 +406,7 @@ func tryColon(lx *Lexer) (tok common.Token, moved bool) {
 
 func trySemicolon(lx *Lexer) (tok common.Token, moved bool) {
   if lx.curChar == ';' {
-    mark := lx.srcBuf.NewMark();
+    mark := lx.srcBuf.NewMultiLineMark();
     for ; lx.curChar == ';'; lx.nextChar() { }
     moved = true;
     tok = makeNewLineTok(lx, mark);
@@ -461,41 +414,28 @@ func trySemicolon(lx *Lexer) (tok common.Token, moved bool) {
   return;
 }
 
-func makeNewLineTok(lx *Lexer, mark common.SrcMark) common.Token {
+func makeNewLineTok(lx *Lexer, mark common.MultiLineSrcMark) common.Token {
   tok := common.Token(nil);
   if lx.inParens <= 0 {
-    tok = lx.newToken(common.TOK_NL, mark);
+    tok = &SimpleToken{common.TOK_NL, lx.srcBuf.NewMultiLinePiece(mark)};
   }
   return tok;
 }
 
-func skipComment(lx *Lexer) (tok common.Token, moved bool) {
+func tryComment(lx *Lexer) (tok common.Token, moved bool) {
   if lx.curChar == '#' {
+    mark := lx.srcBuf.NewMark();
     for ; lx.curChar != '\n' && lx.curChar != '\r' && lx.curChar != common.EOF; lx.nextChar() { }
-    moved = true;
+    tok, moved = lx.newToken(common.TOK_COMMENT, mark), true;
   }
   return;
 }
 
-// special handling of EOF (so we have valid code if possible)
 func tryEof(lx *Lexer) (tok common.Token, moved bool) {
   if lx.curChar == common.EOF {
-    moved = true;
-    if lx.indentLevel <= 0 {
-      tok = lx.newEofTok();
-    } else {
-      tok = lx.newMultiDedentTok(lx.indentLevel*2);
-      lx.indentLevel = 0;
-    }
+    tok, moved = lx.newEofTok(), true;
   }
 
-  return;
-}
-
-func skipSpaces(lx *Lexer) (tok common.Token, moved bool) {
-  for ; common.IsSpace(lx.curChar); lx.nextChar() {
-    moved = true;
-  }
   return;
 }
 

@@ -24,7 +24,6 @@ const (
   // indentation:
   TOK_INDENT;
   TOK_HALF_INDENT;
-  TOK_MULTI_DEDENT;
   TOK_DEDENT;
   TOK_HALF_DEDENT;
 
@@ -67,7 +66,6 @@ func (te TokEnum) String() string {
   case TOK_COLON:        ret = "<TOK COLON>";
   case TOK_INDENT:       ret = "<TOK INDENT>";
   case TOK_HALF_INDENT:  ret = "<TOK HALF INDENT>";
-  case TOK_MULTI_DEDENT: ret = "<TOK MULTI DEDENT>";
   case TOK_DEDENT:       ret = "<TOK DEDENT>";
   case TOK_HALF_DEDENT:  ret = "<TOK HALF DEDENT>";
   case TOK_PAREN_OPEN:   ret = "<TOK PAREN OPEN>";
@@ -130,6 +128,14 @@ type SrcMark interface {
   Pos() int;
 }
 
+// a marker inside a source buffer able to signal another line
+type MultiLineSrcMark interface {
+  Pos() int;
+  Line() int;
+  Column() int;
+  WholeLine() string;
+}
+
 // a piece of a source buffer
 type SrcPiece interface {
   Line() int;
@@ -147,8 +153,10 @@ type SrcBuffer interface {
   Ungetch();
   Getch() byte;
   NewMark() SrcMark;
+  NewMultiLineMark() MultiLineSrcMark;
   NewPiece(start SrcMark) SrcPiece;
   NewMultiPiece([]SrcPiece) SrcPiece;
+  NewMultiLinePiece(MultiLineSrcMark) SrcPiece;
 }
 
 // The interface all tokens returned from the Lexer implement
@@ -167,6 +175,7 @@ type Lexer interface {
   GetToken() Token;
   NewCopyTok(TokEnum, Token) Token;
   NewMultiTok(TokEnum, []Token) Token;
+  NewSpaceTok(Token, int, bool) Token;
   Error(msg string);
 }
 

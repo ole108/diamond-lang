@@ -56,8 +56,6 @@ func main() {
     switch t := tok.(type) {
     case *lexer.IntTok:
       fmt.Println("Got int:", t.Value(), t);
-    case *lexer.MultiDedentTok:
-      fmt.Println("Got dedentation:", t.Dedent());
     default:
       fmt.Println("Got token:", t.Type(), t);
     }

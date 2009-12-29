@@ -13,29 +13,21 @@ type tokBuf struct {
   lx      common.Lexer;  // our source for tokens
   tokBuf  *list.List;    // the real token buffer
   curTok  *list.Element; // position of the current token in the buffer
+  indentLevel int;       // current level of indentation
   emitNl  bool;          // should a new line token be returned?
 }
 
 func NewTokenBuffer(lx common.Lexer) common.TokenBuffer {
-  return &tokBuf{lx, list.New(), nil, false};
+  return &tokBuf{lx, list.New(), nil, 0, false};
 }
 
 func (tb *tokBuf) Error(msg string) {
   tb.lx.Error(msg);
 }
 
-// unget a token (simply go back in buffer if still possible).
-func (tb *tokBuf) ungetToken() {
-  if tb.curTok == nil || tb.curTok.Prev() == nil {
-    tb.Error("Unable to go beyond the start of the token buffer");
-  }
-  tb.curTok = tb.curTok.Prev();
-}
-
 func (tb *tokBuf) GetToken() common.Token {
   if tb.atEnd() {
     tb.readToken();
-    tb.curTok = tb.tokBuf.Back();
   } else {
     tb.curTok = tb.curTok.Next();
   }
@@ -49,8 +41,10 @@ func (tb *tokBuf) atEnd() bool {
 type caseHandler func(common.Token, *tokBuf) bool
 
 func (tb *tokBuf) readToken() {
-  tok := tb.getFilteredToken();
-  caseHandlers := []caseHandler{ handleColon, handleMultiDedent, handleDefault };
+  tok := tb.lx.GetToken();
+  caseHandlers := []caseHandler{
+    handleSpace, handleEof, handleColon, handleDefault,
+  };
   handled := false;
   for i := 0; i < len(caseHandlers) && !handled; i++ {
     handled = caseHandlers[i](tok, tb);
@@ -59,14 +53,13 @@ func (tb *tokBuf) readToken() {
 }
 
 func (tb *tokBuf) getFilteredToken() common.Token {
-  for tok := tb.lx.GetToken(); tok == nil; tok = tb.lx.GetToken() {
-    if tok.Type() == common.TOK_COMMENT || tok.Type() == common.TOK_SPACE {
-      tok = nil;
-    } else {
-      return tok;
-    }
+  tok := tb.lx.GetToken();
+  for ; tok.Type() == common.TOK_COMMENT || tok.Type() == common.TOK_SPACE
+      ; tok = tb.lx.GetToken()                                             {
+
+      tb.tokBuf.PushBack(tok);
   }
-  return nil;
+  return tok;
 }
 
 func (tb *tokBuf) ensureSize() {
@@ -78,53 +71,127 @@ func (tb *tokBuf) ensureSize() {
   }
 }
 
-func handleColon(tok common.Token, tb *tokBuf) bool {
-  if tok.Type() == common.TOK_COLON {
-    tok2 := tb.getFilteredToken();  // whats behind the colon?
-    if tok2.Type() != common.TOK_NL {
-      // No TOK_NL: just 2 normal tokens then
-      tb.curTok = tb.tokBuf.PushBack(tok);
-      tb.tokBuf.PushBack(tok2);
+// special handling of EOF (so we have valid code if possible)
+func handleEof(tok common.Token, tb *tokBuf) bool {
+  if tok.Type() == common.TOK_EOF {
+    if tb.indentLevel > 0 {
+      handleIndent(tb.lx.NewSpaceTok(tok, 0, true), tok, tb);
     } else {
-      newTok := tb.lx.NewMultiTok(common.TOK_BLOCK_START, []common.Token{tok, tok2});
-      tb.curTok = tb.tokBuf.PushBack(newTok);
+      tb.curTok = tb.tokBuf.PushBack(tok);
     }
     return true;
   }
   return false;
 }
 
-func handleMultiDedent(tok common.Token, tb *tokBuf) bool {
-  if tok.Type() == common.TOK_MULTI_DEDENT {
-    dedent := lexer.Tok2multiDedent(tok).Dedent();
-    dedent = handleFirstDedent(dedent, tok, tb);
-
-    // handle all other dedentations:
+func handleSpace(tok common.Token, tb *tokBuf) bool {
+  if tok.Type() == common.TOK_SPACE {
+    spaceTok := tb.token2space(tok);
+    if spaceTok.AtStartOfLine() {
+      handlePossibleIndent(tok, tb);
+    } else {
+      tb.curTok = tb.tokBuf.PushBack(tok);
+    }
     return true;
   }
   return false;
 }
 
-func handleFirstDedent(dedent int, tok common.Token, tb *tokBuf) int {
+func handlePossibleIndent(tok common.Token, tb *tokBuf) {
+  tok2 := tb.lx.GetToken();
+  if tok2.Type() == common.TOK_COMMENT ||
+     tok2.Type() == common.TOK_NL        {
+    tb.curTok = tb.tokBuf.PushBack(tok);
+    tb.tokBuf.PushBack(tok2);
+  } else if tok2.Type() == common.TOK_EOF       {
+    curTok := tb.tokBuf.PushBack(tok);
+    handleEof(tok2, tb);
+    tb.curTok = curTok;
+  } else {
+    handleIndent(tok, tok2, tb);
+  }
+}
+
+func handleIndent(tok common.Token, tok2 common.Token, tb *tokBuf) {
+  handled := recordAnyIndent(tb.token2space(tok).Space(), tok, tb);
+  if handled {
+    tb.tokBuf.PushBack(tok2);
+  } else {
+    tb.curTok = tb.tokBuf.PushBack(tok2);
+  }
+}
+
+func recordAnyIndent(spaces int, tok common.Token, tb *tokBuf) bool {
+  indent := spaces - tb.indentLevel*2;
+  if indent < 0 {
+    recordDedent(-indent, tok, tb);
+  } else if indent > 0 {
+    recordIndent(indent, tok, tb);
+  } else {
+    return false;
+  }
+  return true;
+}
+
+func recordIndent(indent int, tok common.Token, tb *tokBuf) {
+  // we can have half indentations (2 spaces) and
+  //             full indentations (4 spaces)
+  switch indent {
+  case  2:
+    tb.indentLevel++;
+    tb.curTok = tb.tokBuf.PushBack(tb.lx.NewCopyTok(common.TOK_HALF_INDENT, tok));
+  case  4:
+    tb.indentLevel += 2;
+    tb.curTok = tb.tokBuf.PushBack(tb.lx.NewCopyTok(common.TOK_INDENT, tok));
+  default:
+    tok.Error("Indentation error");
+  }
+}
+
+func recordDedent(dedent int, tok common.Token, tb *tokBuf) {
+  if dedent & 1 != 0 { tok.Error("Uneven dedentation error"); }
+  recordOtherDedents(recordFirstDedent(dedent/2, tok, tb), tok, tb);
+}
+
+func recordFirstDedent(dedent int, tok common.Token, tb *tokBuf) int {
   ret := 0;
   if dedent & 1 != 0 {
+    tb.indentLevel--;
     tb.curTok = tb.tokBuf.PushBack(tb.lx.NewCopyTok(common.TOK_HALF_DEDENT, tok));
     ret = dedent - 1;
   } else {
+    tb.indentLevel -= 2;
     tb.curTok = tb.tokBuf.PushBack(tb.lx.NewCopyTok(common.TOK_DEDENT, tok));
     ret = dedent - 2;
   }
   return ret;
 }
 
-func handleOtherDedents(dedent int, tok common.Token, tb *tokBuf) {
+func recordOtherDedents(dedent int, tok common.Token, tb *tokBuf) {
   for d := 0; dedent > d; d += 2 {
+    tb.indentLevel -= 2;
     tb.tokBuf.PushBack(tb.lx.NewCopyTok(common.TOK_DEDENT, tok));
   }
 }
 
+func handleColon(tok common.Token, tb *tokBuf) bool {
+  if tok.Type() == common.TOK_COLON {
+    curTok := tb.tokBuf.PushBack(tok);
+    tok2 := tb.getFilteredToken();  // whats behind the colon?
+    if tok2.Type() != common.TOK_NL {
+      // No TOK_NL: just 2 normal tokens then
+      tb.tokBuf.PushBack(tok2);
+    } else {
+      curTok.Value = tb.lx.NewMultiTok(common.TOK_BLOCK_START, []common.Token{tok, tok2});
+    }
+    tb.curTok = curTok;
+    return true;
+  }
+  return false;
+}
+
 func handleDefault(tok common.Token, tb *tokBuf) bool {
-  tb.tokBuf.PushBack(tok);
+  tb.curTok = tb.tokBuf.PushBack(tok);
   return true;
 }
 
@@ -134,6 +201,17 @@ func (tb *tokBuf) any2token(val interface{}) common.Token {
     return t;
   default:
     tb.Error("Not a token type");
+  }
+
+  return nil;
+}
+
+func (tb *tokBuf) token2space(tok common.Token) *lexer.SpaceTok {
+  switch t := tok.(type) {
+  case *lexer.SpaceTok:
+    return t;
+  default:
+    tb.Error("Not a space token");
   }
 
   return nil;

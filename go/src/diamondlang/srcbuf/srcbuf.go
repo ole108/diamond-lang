@@ -122,6 +122,20 @@ func (sb *SrcBuffer) NewMark() common.SrcMark {
 }
 func (mark *SrcMark) Pos() int { return int(*mark); }
 
+type MultiLineSrcMark struct {
+  pos       int;
+  line      int;
+  column    int;
+  wholeLine string;
+}
+func (sb *SrcBuffer) NewMultiLineMark() common.MultiLineSrcMark {
+  return &MultiLineSrcMark{sb.pos, sb.line, sb.curCol(), sb.wholeLine};
+}
+func (mark *MultiLineSrcMark) Pos() int { return mark.pos; }
+func (mark *MultiLineSrcMark) Line() int { return mark.line; }
+func (mark *MultiLineSrcMark) Column() int { return mark.column; }
+func (mark *MultiLineSrcMark) WholeLine() string { return mark.wholeLine; }
+
 type SrcPiece struct {
   startLine    int;
   startColumn  int;
@@ -134,7 +148,7 @@ type SrcPiece struct {
 // The piece ends one character before the current reading position.
 func (sb *SrcBuffer) NewPiece(start common.SrcMark) common.SrcPiece {
   col := start.Pos() - sb.lineStartPos;
-//if col < 0 { sb.Error("Unable to start before start of line"); }
+  if col < 0 { sb.Error("Unable to start before start of line"); }
   return &SrcPiece{sb.line, col, sb.wholeLine, string(sb.buf[start.Pos():sb.pos])};
 }
 
@@ -155,9 +169,25 @@ func (sb *SrcBuffer) NewMultiPiece(pieces []common.SrcPiece) common.SrcPiece {
   return &SrcPiece{pieces[0].Line(), pieces[0].Column(), wl, cnt};
 }
 
+func (sb *SrcBuffer) NewMultiLinePiece(start common.MultiLineSrcMark) common.SrcPiece {
+  content := string(sb.buf[start.Pos():sb.pos]);
+  return &SrcPiece{start.Line(), start.Column(),
+      makeWholeLine(start, content, sb), content};
+}
+
 func (piece *SrcPiece) Line() int { return piece.startLine }
 func (piece *SrcPiece) Column() int { return piece.startColumn }
 func (piece *SrcPiece) Content() string { return piece.content }
 func (piece *SrcPiece) WholeLine() string { return piece.wholeLine }
 func (piece *SrcPiece) String() string { return piece.content }
+
+func makeWholeLine(start common.MultiLineSrcMark, content string, sb *SrcBuffer) string {
+  beg := start.WholeLine()[0 : start.Column()];
+  mid := content;
+  end := "";
+  if sb.curCol() < len(sb.wholeLine) {
+    end = sb.wholeLine[sb.curCol() : len(sb.wholeLine)];
+  }
+  return beg + mid + end;
+}
 

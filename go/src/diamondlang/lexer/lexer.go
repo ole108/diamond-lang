@@ -13,12 +13,11 @@ type Lexer struct {
   srcBuf      common.SrcBuffer; // our source for characters, ...
   parenStack  []byte;  // for handling nested parentheses
   inParens    int;     // (how deep) are we inside parentheses?
-  indentLevel int;     // current level of indentation
   curChar     byte;
 }
 
 func NewLexer(sb common.SrcBuffer) common.Lexer {
-  lx := &Lexer{sb, new([MAX_PARENS]byte), 0, 0, 254};
+  lx := &Lexer{sb, new([MAX_PARENS]byte), 0, 254};
   lx.nextChar();
   return lx;
 }
@@ -50,9 +49,8 @@ func openParen(ch byte, lx *Lexer) byte {
 func (lx *Lexer) GetToken() common.Token {
   tok := common.Token(nil);
   lxFuncs := []lexFunc{
-      tryEof, tryIndent, skipComment, tryNewLine, trySemicolon, tryColon, tryParen,
-      tryNumber, tryOperator, tryId, tryChar, tryString,
-      skipSpaces, signalUndefined
+      trySpace, tryEof, tryComment, tryNewLine, trySemicolon, tryColon, tryParen,
+      tryNumber, tryOperator, tryId, tryChar, tryString, signalUndefined
   };
 
   tok = lx.getFirstTok(lxFuncs);

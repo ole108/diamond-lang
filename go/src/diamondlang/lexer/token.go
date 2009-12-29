@@ -32,6 +32,9 @@ func (lx *Lexer) NewMultiTok(typ common.TokEnum, toks []common.Token) common.Tok
 }
 
 func (tok *SimpleToken) Type() common.TokEnum { return tok.typ; }
+func (tok *SimpleToken) String() string {
+  return tok.typ.String() + ": `" + tok.SrcPiece.String() + "`";
+}
 
 /// HasSpaceAround - return:
 ///   -1 for front space only
@@ -56,6 +59,17 @@ func (tok *SimpleToken) Error(msg string) {
   common.HandleFatal(common.MakeErrString(msg, tok.Line(), tok.WholeLine(),
       tok.Column(), len(tok.Content()) )
   );
+}
+
+func (lx *Lexer) token2simple(tok common.Token) *SimpleToken {
+  switch t := tok.(type) {
+  case *SimpleToken:
+    return t;
+  default:
+    lx.Error("Not a simple token");
+  }
+
+  return nil;
 }
 
 
@@ -95,34 +109,29 @@ type StringTok struct {
   *SimpleToken;
   value string;
 }
-func (lx *Lexer) newStringTok(mark common.SrcMark, val string) *StringTok {
-  tok := lx.newToken(common.TOK_STR, mark);
+func (lx *Lexer) newStringTok(mark common.MultiLineSrcMark, val string) *StringTok {
+  tok := &SimpleToken{common.TOK_STR, lx.srcBuf.NewMultiLinePiece(mark)};
   return &StringTok{tok, val};
 }
 func (tok *StringTok) Value() string { return tok.value }
 
-/// MultiDedentTok - Signal multiple dedentations.
-type MultiDedentTok struct {
+/// SpaceTok - Signal some space.
+type SpaceTok struct {
   *SimpleToken;
-  dedent int;
+  space int;
+  atStartOfLine bool;
 }
-func (lx *Lexer) newMultiDedentTok(dedent int) *MultiDedentTok {
-  if (dedent & 1) > 0 || dedent <= 0 { lx.Error("Indentation error"); }
+func (lx *Lexer) newSpaceTok(mark common.SrcMark, space int, atStartOfLine bool) *SpaceTok {
+  tok := lx.newToken(common.TOK_SPACE, mark);
+  return &SpaceTok{tok, space, atStartOfLine};
+}
+func (lx *Lexer) NewSpaceTok(tok common.Token, space int, atStartOfLine bool) common.Token {
+  newTok := lx.token2simple(lx.NewCopyTok(common.TOK_SPACE, tok));
+  return &SpaceTok{newTok, space, atStartOfLine};
+}
+func (tok *SpaceTok) Space() int { return tok.space }
+func (tok *SpaceTok) AtStartOfLine() bool { return tok.atStartOfLine }
 
-  // dedent is always even; so we don't loose information:
-  return &MultiDedentTok{lx.newToken(common.TOK_MULTI_DEDENT, lx.srcBuf.NewMark()),
-                         dedent/2};
-}
-func (tok *MultiDedentTok) Dedent() int { return tok.dedent }
-func Tok2multiDedent(tok common.Token) *MultiDedentTok {
-  switch t := tok.(type) {
-  case *MultiDedentTok:
-    return t;
-  default:
-    tok.Error("Unable to convert to a multi dedentation token");
-  }
-  return nil;
-}
 
 type IdPart struct {
   typ common.TokEnum;
