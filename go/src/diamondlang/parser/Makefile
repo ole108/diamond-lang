@@ -1,8 +1,7 @@
 include ../../../Make.$(GOARCH)
 
-TARG=diamondlang/common
+TARG=diamondlang/parser
 GOFILES=\
-  common.go\
   ast.go\
 
 include ../../../Make.pkg
