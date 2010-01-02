@@ -29,36 +29,61 @@ func countSpaces(lx *Lexer) int {
 }
 
 func tryId(lx *Lexer) (tok common.Token, moved bool) {
-  if isAlpha(lx.curChar) {
+  if lx.curChar == '\\' {
+    lx.nextChar();
+    if !isIdStartChar(lx.curChar) {
+      lx.prevChar();
+      return;
+    }
+    lx.prevChar();
+  }
+
+  if isIdStartChar(lx.curChar) {
     fullId := readFullId(lx);
-    parts := fullId2parts(fullId);
-    fullId.typ = setIdTypes(parts, fullId);
-    tok, moved = lx.newIdTok(fullId, parts), true;
+    id, halfApplied := scanSpecialCall(fullId);
+    parts := fullId2parts(id, fullId);
+    typ   := setIdTypes(parts, fullId);
+
+    if halfApplied && typ != common.TOK_FUNC_ID {
+      fullId.Error("Only functions can be half applied");
+    }
+    tok, moved = lx.newIdTok(typ, fullId, parts, halfApplied), true;
   }
   return;
 }
 
-func readFullId(lx *Lexer) *SimpleToken {
+func readFullId(lx *Lexer) common.SrcPiece {
   mark := lx.srcBuf.NewMark();
   for ; isIdChar(lx.curChar); lx.nextChar() { }
-  return lx.newToken(common.TOK_VAL_ID, mark);
+  return lx.srcBuf.NewPiece(mark);
 }
 
-func fullId2parts(fullId common.Token) []*IdPart {
-  strParts := strings.Split(fullId.Content(), ".", 0);
+func scanSpecialCall(fullId common.SrcPiece) (id string, halfApplied bool) {
+  buf := strings.Bytes(fullId.Content());
+  i := 0;
+  if buf[i] == '\\' {
+    halfApplied = true;
+    i++;
+  }
+  id = string(buf[i : len(buf)]);
+  return;
+}
+
+func fullId2parts(id string, fullId common.SrcPiece) []*IdPart {
+  strParts := strings.Split(id, ".", 0);
   idParts := make([]*IdPart, len(strParts));
   for i, s := range strParts {
     if len(s) <= 0 {
       fullId.Error("Illegal identifier");
     }
-    idParts[i] = newIdPart(common.TOK_MODULE_ID, s);
+    idParts[i] = newIdPart(common.TOK_MODULE_ID, s, s[0] == '_');
   }
   return idParts;
 }
 
-func setIdTypes(parts []*IdPart, tok common.Token) common.TokEnum {
+func setIdTypes(parts []*IdPart, piece common.SrcPiece) common.TokEnum {
   for _, part := range parts {
-    part.typ = getIdType(part.id, tok);
+    part.typ = getIdType(part.id, piece);
   }
 
   var tokTyp common.TokEnum = common.TOK_MODULE_ID;
@@ -68,16 +93,16 @@ func setIdTypes(parts []*IdPart, tok common.Token) common.TokEnum {
       if i <= 1 && tokTyp == common.TOK_MODULE_ID {
         tokTyp = common.TOK_CONST_ID;
       } else {
-        tok.Error("Illegal constant identifier part");
+        piece.Error("Illegal constant identifier part");
       }
     case tokTyp == common.TOK_CONST_ID:
       if part.typ != common.TOK_MODULE_ID && part.typ != common.TOK_VAL_ID {
-        tok.Error("Illegal constant identifier part");
+        piece.Error("Illegal constant identifier part");
       }
       part.typ = common.TOK_VAL_ID;
     case part.typ == common.TOK_MODULE_ID:
       if tokTyp == common.TOK_FUNC_ID {
-        tok.Error("Illegal value after function identifier part");
+        piece.Error("Illegal value after function identifier part");
       }
       if i >= 1 {
         part.typ = common.TOK_VAL_ID;
@@ -85,25 +110,25 @@ func setIdTypes(parts []*IdPart, tok common.Token) common.TokEnum {
       }
     case part.typ == common.TOK_FUNC_ID:
       if i > 1 || tokTyp != common.TOK_MODULE_ID {
-        tok.Error("Illegal function identifier");
+        piece.Error("Illegal function identifier");
       }
       tokTyp = common.TOK_FUNC_ID;
     case part.typ == common.TOK_VAL_ID:
       if tokTyp == common.TOK_FUNC_ID {
-        tok.Error("Illegal value after function identifier part");
+        piece.Error("Illegal value after function identifier part");
       }
       if tokTyp == common.TOK_MODULE_ID {
         tokTyp = common.TOK_VAL_ID;
       }
     default:
-      tok.Error("Illegal identifier part");
+      piece.Error("Illegal identifier part");
     }
   }
 
   return tokTyp;
 }
 
-func getIdType(id string, tok common.Token) common.TokEnum {
+func getIdType(id string, piece common.SrcPiece) common.TokEnum {
   // ordinary flags:
   gotUpper := false;
   gotLower := false;
@@ -119,7 +144,7 @@ func getIdType(id string, tok common.Token) common.TokEnum {
   i++;
 
   if !firstUpper && !firstLower {
-    tok.Error("Illegal start of identifier part");
+    piece.Error("Illegal start of identifier part");
   }
 
   // set flags:
@@ -141,7 +166,7 @@ func getIdType(id string, tok common.Token) common.TokEnum {
       gotUnder = true;
       lastUpper = false;
     default:
-      tok.Error("Illegal character in identifier part");
+      piece.Error("Illegal character in identifier part");
     }
   }
 
@@ -158,17 +183,26 @@ func getIdType(id string, tok common.Token) common.TokEnum {
     typ = common.TOK_FUNC_ID;
   default:
 //  fmt.Println("firstUpper:", firstUpper, ", gotLower:", gotLower, ", gotUnder:", gotUnder, ", got2Uppr:", got2Uppr);
-    tok.Error("Illegal identifier part");
+    piece.Error("Illegal identifier part");
   }
 
   return typ;
 }
 
+
 func tryOperator(lx *Lexer) (tok common.Token, moved bool) {
+  halfApplied := false;
+  if lx.curChar == '\\' {
+    halfApplied = true;
+    lx.nextChar();
+  }
+
   if isOpChar(lx.curChar) {
     mark := lx.srcBuf.NewMark();
     for ; isOpChar(lx.curChar); lx.nextChar() { }
-    tok, moved = lx.newToken(common.TOK_OP_ID, mark), true;
+    tok, moved = lx.newOperatorTok(mark, halfApplied), true;
+  } else if halfApplied {
+    lx.prevChar();
   }
   return;
 }
@@ -309,11 +343,11 @@ func escaped2char(escaped bool, char byte, lx *Lexer) byte {
 
 func tryString(lx *Lexer) (tok common.Token, moved bool) {
   if lx.curChar == '"' {
-    mark := lx.srcBuf.NewMultiLineMark();
+    mark := lx.srcBuf.NewMark();
     str := readString(lx.curChar, lx, readEscString);
     tok, moved = lx.newStringTok(mark, str), true;
   } else if lx.curChar == '`' {
-    mark := lx.srcBuf.NewMultiLineMark();
+    mark := lx.srcBuf.NewMark();
     str := readString(lx.curChar, lx, readRawString);
     tok, moved = lx.newStringTok(mark, str), true;
   }
@@ -382,7 +416,7 @@ func readCharCount(char byte, lx *Lexer, max int) int {
 
 func tryNewLine(lx *Lexer) (tok common.Token, moved bool) {
   if lx.curChar == '\n' || lx.curChar == '\r' {
-    mark := lx.srcBuf.NewMultiLineMark();
+    mark := lx.srcBuf.NewMark();
     readNewLine(lx);
     tok, moved = makeNewLineTok(lx, mark), true;
   }
@@ -406,18 +440,17 @@ func tryColon(lx *Lexer) (tok common.Token, moved bool) {
 
 func trySemicolon(lx *Lexer) (tok common.Token, moved bool) {
   if lx.curChar == ';' {
-    mark := lx.srcBuf.NewMultiLineMark();
+    mark := lx.srcBuf.NewMark();
     for ; lx.curChar == ';'; lx.nextChar() { }
-    moved = true;
-    tok = makeNewLineTok(lx, mark);
+    tok, moved = makeNewLineTok(lx, mark), true;
   }
   return;
 }
 
-func makeNewLineTok(lx *Lexer, mark common.MultiLineSrcMark) common.Token {
+func makeNewLineTok(lx *Lexer, mark common.SrcMark) common.Token {
   tok := common.Token(nil);
   if lx.inParens <= 0 {
-    tok = &SimpleToken{common.TOK_NL, lx.srcBuf.NewMultiLinePiece(mark)};
+    tok = &SimpleToken{common.TOK_NL, lx.srcBuf.NewPiece(mark)};
   }
   return tok;
 }

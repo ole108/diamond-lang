@@ -4,6 +4,7 @@ import (
   "strings";
   "fmt";
   "os";
+  "container/list";
 )
 
 var TABSIZE = 4;  // 'almost constant' should be set only by main!
@@ -108,7 +109,7 @@ func SpaceAmount(ch byte) int {
 }
 
 func MakeErrString(msg string, lineNum int, lineStr string, markStart int, markLen int) string {
-  return fmt.Sprintf("%s at line %d:\n", msg, lineNum+1) +
+  return fmt.Sprintf("%s at line %d near:\n", msg, lineNum+1) +
          lineStr + "\n" +
          strings.Repeat(" ", markStart) + strings.Repeat("^", markLen) + "\n";
 }
@@ -124,25 +125,21 @@ func HandleFatal(msg string) {
 // --------------------------------------------------------------------------
 
 // a marker inside a source buffer
-type SrcMark interface {
-  Pos() int;
-}
-
-// a marker inside a source buffer able to signal another line
-type MultiLineSrcMark interface {
-  Pos() int;
-  Line() int;
-  Column() int;
-  WholeLine() string;
+type SrcMark struct {
+  Elem  *list.Element;
+  Col    int;
 }
 
 // a piece of a source buffer
 type SrcPiece interface {
-  Line() int;
-  Column() int;
+  Start() SrcMark;
+  End() SrcMark;
+  StartLine() int;
+  StartColumn() int;
   Content() string;
   WholeLine() string;
   String() string;
+  Error(msg string);
 }
 
 // the interface the Lexer needs as a source
@@ -153,29 +150,28 @@ type SrcBuffer interface {
   Ungetch();
   Getch() byte;
   NewMark() SrcMark;
-  NewMultiLineMark() MultiLineSrcMark;
   NewPiece(start SrcMark) SrcPiece;
-  NewMultiPiece([]SrcPiece) SrcPiece;
-  NewMultiLinePiece(MultiLineSrcMark) SrcPiece;
+  NewAnyPiece(start SrcMark, end SrcMark) SrcPiece;
 }
 
 // The interface all tokens returned from the Lexer implement
 type Token interface {
+  SourcePiece() SrcPiece;
   HasSpaceAround() int;
   Type() TokEnum;
   Error(msg string);
-  Line() int;
-  Column() int;
-  Content() string;
+  StartLine() int;
+  StartColumn() int;
   WholeLine() string;
+  Content() string;
   String() string;
 }
 
 type Lexer interface {
   GetToken() Token;
-  NewCopyTok(TokEnum, Token) Token;
-  NewMultiTok(TokEnum, []Token) Token;
-  NewSpaceTok(Token, int, bool) Token;
+  NewCopyTok(typ TokEnum, tok Token) Token;
+  NewAnyTok(typ TokEnum, start SrcMark, end SrcMark) Token;
+  NewSpaceTok(tok Token, space int, atStartOfLine bool) Token;
   Error(msg string);
 }
 
@@ -184,3 +180,5 @@ type TokenBuffer interface {
   Error(msg string);
 }
 
+type Parser interface {
+}

@@ -30,6 +30,12 @@ func (lx *Lexer) nextChar() {
   lx.curChar = lx.srcBuf.Getch();
 }
 
+func (lx *Lexer) prevChar() {
+  lx.srcBuf.Ungetch();
+  lx.srcBuf.Ungetch();
+  lx.curChar = lx.srcBuf.Getch();
+}
+
 func openParen(ch byte, lx *Lexer) byte {
   var ret byte;
   switch ch {

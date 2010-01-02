@@ -2,111 +2,135 @@ package srcbuf
 
 import (
   "diamondlang/common";
-  "io/ioutil";
+  "container/list";
+  "bufio";
+  "bytes";
   "os";
-//"fmt";
+  "io";
+  "fmt";
 )
+
+const (
+  MAX_BUFFER_LINES = 1024;
+)
+
+type readByter interface {
+  ReadByte() (c byte, err os.Error);
+}
+
 
 // --------------------------------------------------------------------------
 // The state of a source reading buffer is held in a variable of this type:
 // --------------------------------------------------------------------------
 type SrcBuffer struct {
-  buf          []byte;  // the whole input source file is stored here
-  size         int;     // len(buf)
-  pos          int;     // current 'reading' position in the buffer
-  line         int;     // current line number
-  lineStartPos int;     // starting position of current line in buf
-  atLineStart  bool;    // are we *really* at the start of the line?
-  wholeLine    string;  // the whole current line
-  bufName      string;  // for messages to the user only
+  source       readByter;    // our source for bytes
+  buf         *list.List;    // the real buffer of lines
+  curElem     *list.Element; // the current element in the buffer
+  curLine     *line;         // the current line in the buffer
+  curCol       int;          // current column in the current line
+  atLineStart  bool;         // are we *really* at the start of the line?
+  eof          bool;
 }
 
 
 // This function doesn't handle any errors but returns it instead.
 func NewSourceFromFile(filename string) (srcBuf *SrcBuffer, err os.Error) {
-  var buf []byte;
-  buf, err = ioutil.ReadFile(filename);
-  if err != nil { return nil, err }
-  return NewSourceFromBuffer(buf, filename), err;
+  file, e := os.Open(filename, os.O_RDONLY, 0444);
+  if e != nil { return nil, e }
+  return NewSourceFromReader(file), nil;
 }
 
-func NewSourceFromBuffer(buf []byte, name string) *SrcBuffer {
-  ret := &SrcBuffer{buf, len(buf), -1, 0, 0, true, "", name};
-  ret.updateSrcWholeLine();
+func NewSourceFromBuffer(buf []byte) *SrcBuffer {
+  return NewSourceFromReader(bytes.NewBuffer(buf));
+}
+
+func NewSourceFromReader(rd io.Reader) *SrcBuffer {
+  src, ok := rd.(readByter);
+  if !ok {
+    src = bufio.NewReader(rd);
+  }
+  ret := &SrcBuffer{src, list.New(), nil, nil, -1, true, false};
   return ret;
 }
 
 
-// returns current column in current line.
-func (sb *SrcBuffer) curCol() int { return sb.pos - sb.lineStartPos }
-
-// update the global variable 'sb.wholeLine' to the current line of source code
-func (sb *SrcBuffer) updateSrcWholeLine() {
-  n := sb.lineStartPos;
-  for ; n<sb.size && sb.buf[n]!='\n' && sb.buf[n]!='\r'; n++ { }
-  sb.wholeLine = string(sb.buf[sb.lineStartPos : n]);
-}
-
 // Error - Handle errors by writing a description to STDERR and exiting.
 func (sb *SrcBuffer) Error(msg string) {
   common.HandleFatal(
-      common.MakeErrString(msg, sb.line, sb.wholeLine, sb.curCol(), 1)
+      common.MakeErrString(msg, sb.curLine.num, sb.curLine.String(), sb.curCol, 1)
   );
 }
 
 func (sb *SrcBuffer) AtStartOfLine() bool {
-  return sb.atLineStart && sb.pos <= sb.lineStartPos;
+  return sb.atLineStart && sb.curCol <= 0;
 }
 
 func (sb *SrcBuffer) NotAtStartOfLine() {
   sb.atLineStart = false;
 }
 
+// remove old lines from the buffer
+func (sb *SrcBuffer) ClearUpTo(mark common.SrcMark) {
+  for mark.Elem != sb.buf.Front() {
+    sb.buf.Remove(sb.buf.Front());
+  }
+}
+
 // unget a character from the source code
 func (sb *SrcBuffer) Ungetch() {
-    sb.pos--;
-    if sb.pos < sb.lineStartPos {
+    if sb.curCol < 0 {
       sb.Error("Unable to unget characters beyond the beginning of the current line");
     }
+    sb.curCol--;
 }
 
 // get the next character from the source code
 func (sb *SrcBuffer) Getch() byte {
   // handle EOF
-  if sb.pos+1 >= sb.size  {
-    sb.pos = sb.size;
-    return common.EOF
+  if sb.eof { return common.EOF; }
+
+  // read a new line if necessary
+  if sb.mustGotoNextLine() {
+    sb.gotoNextLine();
   }
 
-  // read and check new character
-  sb.pos++;
-  ch := sb.buf[sb.pos];
-  sb.handleNewLine(ch);
-  sb.ensureAscii(ch);
+  // read new character
+  sb.curCol++;
+  ch := sb.curLine.buf[sb.curCol];
+  if ch == common.EOF { sb.eof = true; }  // handle EOF
 
   return ch;
 }
-
-// choke on multibyte UTF8 characters
-func (sb *SrcBuffer) ensureAscii(ch byte) {
-  if ch > 127  { sb.Error("Unable to handle non-ASCII character") }
+func (sb *SrcBuffer) mustGotoNextLine() bool {
+  return sb.curLine == nil || sb.curCol+1 >= len(sb.curLine.buf);
 }
-
-// handle new lines (can be done here since they can't be escaped :-)
-func (sb *SrcBuffer) handleNewLine(ch byte) {
-  oldChar := byte(0);
-  if sb.pos > 0  { oldChar = sb.buf[sb.pos-1] }
-  if (oldChar == '\n' || (oldChar == '\r' && ch != '\n')) {
-    sb.updateCurNewLine();
+func (sb *SrcBuffer) gotoNextLine() {
+  if sb.curElem == nil || sb.curElem.Next() == nil {
+    sb.readNewLine();
+  } else {
+    sb.curElem = sb.curElem.Next();
+    sb.curLine = any2line(sb.curElem.Value);
   }
+  sb.curCol = -1;
+  sb.atLineStart = true;
 }
 
-// update global variables because of a new line
-func (sb *SrcBuffer) updateCurNewLine() {
-  sb.line++;
-  sb.lineStartPos = sb.pos;
-  sb.atLineStart = true;
-  sb.updateSrcWholeLine();
+// read a new line and append it to the source buffer
+func (sb *SrcBuffer) readNewLine() {
+  if sb.buf.Len() > MAX_BUFFER_LINES {
+    sb.Error("Buffer overflow; please preak up your code into smaller pieces");
+  }
+
+  num := 0;
+  if sb.curLine != nil {
+    num = sb.curLine.num + 1;
+  }
+  line, err := newLine(sb.source, num);
+  if err != nil {
+    common.HandleFatal(fmt.Sprintf("While reading line %d: %v", num+1, err.String()));
+  }
+  sb.curLine = line;
+  sb.curElem = sb.buf.PushBack(line);
 }
 
 
@@ -114,80 +138,66 @@ func (sb *SrcBuffer) updateCurNewLine() {
 // Special types that help the lexer.
 // --------------------------------------------------------------------------
 
-type SrcMark  int
 func (sb *SrcBuffer) NewMark() common.SrcMark {
-  ret := new(SrcMark);
-  *ret = SrcMark(sb.pos);
-  return ret;
+  return common.SrcMark{sb.curElem, sb.curCol};
 }
-func (mark *SrcMark) Pos() int { return int(*mark); }
-
-type MultiLineSrcMark struct {
-  pos       int;
-  line      int;
-  column    int;
-  wholeLine string;
-}
-func (sb *SrcBuffer) NewMultiLineMark() common.MultiLineSrcMark {
-  return &MultiLineSrcMark{sb.pos, sb.line, sb.curCol(), sb.wholeLine};
-}
-func (mark *MultiLineSrcMark) Pos() int { return mark.pos; }
-func (mark *MultiLineSrcMark) Line() int { return mark.line; }
-func (mark *MultiLineSrcMark) Column() int { return mark.column; }
-func (mark *MultiLineSrcMark) WholeLine() string { return mark.wholeLine; }
 
 type SrcPiece struct {
-  startLine    int;
-  startColumn  int;
-  wholeLine    string;
-  content      string;
+  start common.SrcMark;
+  end   common.SrcMark;
 }
 
 // Create a new SrcPiece.
 // The given mark is the start of the piece.
 // The piece ends one character before the current reading position.
 func (sb *SrcBuffer) NewPiece(start common.SrcMark) common.SrcPiece {
-  col := start.Pos() - sb.lineStartPos;
-  if col < 0 { sb.Error("Unable to start before start of line"); }
-  return &SrcPiece{sb.line, col, sb.wholeLine, string(sb.buf[start.Pos():sb.pos])};
+  return &SrcPiece{start, sb.NewMark()};
 }
 
-func (sb *SrcBuffer) NewMultiPiece(pieces []common.SrcPiece) common.SrcPiece {
-  if len(pieces) <= 0 {
-    sb.Error("Too few source pieces");
-  }
-  cnt  := "";
-  wl   := pieces[0].WholeLine();
-  line := pieces[0].Line();
-  for _, piece := range pieces {
-    if line < piece.Line() {
-      wl += "\n" + piece.WholeLine();
-      line = piece.Line();
-    }
-    cnt += piece.Content();
-  }
-  return &SrcPiece{pieces[0].Line(), pieces[0].Column(), wl, cnt};
+func (sb *SrcBuffer) NewAnyPiece(start common.SrcMark, end common.SrcMark) common.SrcPiece {
+  return &SrcPiece{start, end};
 }
 
-func (sb *SrcBuffer) NewMultiLinePiece(start common.MultiLineSrcMark) common.SrcPiece {
-  content := string(sb.buf[start.Pos():sb.pos]);
-  return &SrcPiece{start.Line(), start.Column(),
-      makeWholeLine(start, content, sb), content};
+func (piece *SrcPiece) Start() common.SrcMark { return piece.start; }
+func (piece *SrcPiece) End() common.SrcMark { return piece.end; }
+func (piece *SrcPiece) StartLine() int { return any2line(piece.start.Elem.Value).num; }
+func (piece *SrcPiece) StartColumn() int { return piece.start.Col; }
+func (piece *SrcPiece) String() string { return piece.Content() }
+
+func (piece *SrcPiece) Error(msg string) {
+  common.HandleFatal(common.MakeErrString(msg, piece.StartLine(), piece.WholeLine(),
+      piece.StartColumn(), len(piece.Content()) )
+  );
 }
 
-func (piece *SrcPiece) Line() int { return piece.startLine }
-func (piece *SrcPiece) Column() int { return piece.startColumn }
-func (piece *SrcPiece) Content() string { return piece.content }
-func (piece *SrcPiece) WholeLine() string { return piece.wholeLine }
-func (piece *SrcPiece) String() string { return piece.content }
-
-func makeWholeLine(start common.MultiLineSrcMark, content string, sb *SrcBuffer) string {
-  beg := start.WholeLine()[0 : start.Column()];
-  mid := content;
-  end := "";
-  if sb.curCol() < len(sb.wholeLine) {
-    end = sb.wholeLine[sb.curCol() : len(sb.wholeLine)];
+func (piece *SrcPiece) WholeLine() string {
+  ret := "";
+  first := true;
+  for elem := piece.start.Elem; elem != piece.end.Elem; elem = elem.Next() {
+    if !first { ret += "\n"; }
+    first = false;
+    ret += any2line(elem.Value).String();
   }
-  return beg + mid + end;
+  if !first { ret += "\n"; }
+  return ret + any2line(piece.end.Elem.Value).String();
+}
+
+func (piece *SrcPiece) Content() string {
+  if piece.start.Elem == piece.end.Elem {
+    return string(any2line(piece.start.Elem.Value).buf[piece.start.Col : piece.end.Col]);
+  }
+
+  line := any2line(piece.start.Elem.Value);
+  start := string(line.buf[piece.start.Col : len(line.buf)]);
+
+  mid := "";
+  for elem := piece.start.Elem.Next(); elem != piece.end.Elem; elem = elem.Next() {
+    mid += string(any2line(elem.Value).buf);
+  }
+
+  line = any2line(piece.end.Elem.Value);
+  end := string(line.buf[0 : piece.end.Col]);
+
+  return start + mid + end;
 }
 

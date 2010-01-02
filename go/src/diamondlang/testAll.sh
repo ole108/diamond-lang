@@ -7,7 +7,7 @@ for dir in $SUBDIRS ; do
   echo ""
   echo "$dir:"
   cd "$BASEDIR/$dir"
-  make || exit 1
+  make 'test' || exit 1
   cd -
 done
 

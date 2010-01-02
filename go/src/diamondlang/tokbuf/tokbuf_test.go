@@ -152,7 +152,7 @@ func TestSemiNl(t *testing.T) {
 
 
 func testStringVsTokens(t *testing.T, str string, toks []*tstTok) {
-  tb := NewTokenBuffer(lexer.NewLexer(srcbuf.NewSourceFromBuffer(strings.Bytes(str), "TestTokens")));
+  tb := NewTokenBuffer(lexer.NewLexer(srcbuf.NewSourceFromBuffer(strings.Bytes(str))));
   var tok common.Token;
   var i   int;
   for tok, i = tb.GetToken(), 0; tok.Type() != common.TOK_EOF && i < len(toks);

@@ -44,7 +44,11 @@ func lower(ch byte) byte {
 }
 
 func isIdChar(ch byte) bool {
-  return (isAlpha(ch) || isDigit(ch) || ch == '_' || ch == '.');
+  return (isAlpha(ch) || isDigit(ch) || ch == '_' || ch == '.' || ch == '\\');
+}
+
+func isIdStartChar(ch byte) bool {
+  return (isAlpha(ch) || ch == '_' || ch == '.' || ch == '\\');
 }
 
 func strRemove(s string, ch byte) string {

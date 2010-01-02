@@ -221,7 +221,7 @@ func TestCharsStrings(t *testing.T) {
 }
 
 func testStringVsTokens(t *testing.T, str string, toks []*tstTok) {
-  lx := NewLexer(srcbuf.NewSourceFromBuffer(strings.Bytes(str), "TestTokens"));
+  lx := NewLexer(srcbuf.NewSourceFromBuffer(strings.Bytes(str)));
   var tok common.Token;
   var i   int;
   for tok, i = lx.GetToken(), 0; tok.Type() != common.TOK_EOF && i < len(toks);

@@ -14,11 +14,10 @@ type tokBuf struct {
   tokBuf  *list.List;    // the real token buffer
   curTok  *list.Element; // position of the current token in the buffer
   indentLevel int;       // current level of indentation
-  emitNl  bool;          // should a new line token be returned?
 }
 
 func NewTokenBuffer(lx common.Lexer) common.TokenBuffer {
-  return &tokBuf{lx, list.New(), nil, 0, false};
+  return &tokBuf{lx, list.New(), nil, 0};
 }
 
 func (tb *tokBuf) Error(msg string) {
@@ -182,7 +181,8 @@ func handleColon(tok common.Token, tb *tokBuf) bool {
       // No TOK_NL: just 2 normal tokens then
       tb.tokBuf.PushBack(tok2);
     } else {
-      curTok.Value = tb.lx.NewMultiTok(common.TOK_BLOCK_START, []common.Token{tok, tok2});
+      curTok.Value = tb.lx.NewAnyTok(common.TOK_BLOCK_START,
+          tok.SourcePiece().Start(), tok2.SourcePiece().End());
     }
     tb.curTok = curTok;
     return true;
