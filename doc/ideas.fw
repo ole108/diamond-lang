@@ -1,0 +1,375 @@
+@!---------------------------------------!
+@!  Start of Diamond Ideas .fw File      !
+@!---------------------------------------!
+
+@t vskip 40 mm
+@t title titlefont centre "Ideas for the"
+@t title titlefont centre "Diamond"
+@t title titlefont centre "Programming Language"
+@t vskip 20 mm
+@t table_of_contents
+
+
+@A@<The Deathly Diseases of Programming@>
+These are the programming deseases that diamond tries to overcome.
+
+@B@<Unreadable programming@>
+It is possible to write unreadable programs in any language.
+But some languages support readable or even literate programs
+much better than others.
+
+Clean code and literate programming are the most important factors
+for maintainable code.
+
+A bad unreadable code base makes further development for many years
+impossible.
+
+This is why diamond directly supports literate prgramming and
+supports clean code development as much as possible.
+
+Understandability of programs is the only absolutely deathly disease.
+All other diseases can be cured with readable code.
+So exist big programs written in C or C++ that have been developed
+further for more than 10 years and are still readable.
+
+
+@B@<Manual Memory Managemant@>
+90% of todays security fixes would be unnecessary with automated
+garbage collection.
+
+So this disease is deathly especially for programs accessible from
+the internet.
+
+For all other applications automated garbage collection saves at least
+a lot of development time, lots of bugs and even more debugging sessions.
+
+Even the speed of a big program can often be improved with GC.
+This is a bit like assembler. For small examples and performance
+tests the manual approach usually wins.
+But for real world programs the automated approach is usually better.
+
+In my humble opinion, automated memory management should be an integral
+part of the operating system kernel (just like scheduling).
+This would save quite some overhead for each application.
+
+People can fight it, make fun of it and abuse it but the facts are too
+clear. In the end they will look like a dinosaur in a modern zoo that
+claims "I am evolutionary superior to you little humans!" all the time.
+
+
+@B@<Variables@>
+Variables make programming parrallel programs extremely difficult
+and are the cause for a lot of bugs.
+
+Functional programming overcomes these problems and encourages a
+programming style with small, readable functions.
+
+Many of the functional programming languages that exist today seem
+to be made by academics to prove how bright they are and how
+abstract they can think.
+The official functional programming FAQ states that pure functional
+languages are easier to understand.
+It is true that they have less concepts to understand.
+But to write a usable program these have to be used in a very
+abstract and elaborate way.
+So in the end real world programs in a pure functional language are
+only easier to read for a parser or an academic mind adjusted to such
+a language for many years.
+
+So diamond tries to be a very easy to learn and understand functional
+language.
+It will go to any lenght to reach this aim except for introducing
+variables.
+
+Performance of functional programs can be quite good and excellent when
+combined with automated GC in the operating system.
+This would prevent any copying of data. So data could be read from a
+hard disk or a network card and passed around to several applications,
+put in the cache, etc.
+
+
+
+@A@<Literate Programming and Wiki@>
+
+Literate programming and wiki integrate naturally with each other.
+The following sections explain why and how.
+
+@B@<Wiki Mark Up for Documentation@>
+Entries to a wiki can be made easily without learning a lot of mark up.
+Many people use wikis already and a nice standard is emerging.
+
+It is especially nice that wiki languages are designed in a way that
+the flow of thoughts isn't interrupted while typing.
+
+Wiki mark up integrates well with programming since it is
+easy to read and doesn't contain any special characters.
+
+Furthermore wiki style mark up is independent of any output format.
+So the documentation could be transformed to PDF, HTML, XHTML,
+..., what ever.
+New versions of the HTML standard can be supported easily.
+
+
+@B@<Literate Programming@>
+The source code of literate programs is made even more literate
+with wiki style mark up as opposed to any other style.
+Even TeX/LaTeX and HTML don't have the same readability.
+
+
+@B@<Functions vs. Macros@>
+Macros have a very long tradition just like functions.
+It seems that functions are supperior at least in the field of
+programming.
+
+In most programming languages (notably C and C++) that still support
+macros, the macro system is the ugly kid.
+
+But of course the functions have to be defined at a position that
+supports the readability of the code.
+So usage befor definition is the norm.
+
+Aswell imports, etc. should be possible to be made anywhere.
+
+
+@B@<Wiki as Development Environment@>
+A real wiki (with the compiler as backend) as development environment
+makes the language very accessible to new programmers.
+
+One instance of the wiki can be installed at the projects home page as
+a playground for novices.
+
+Other instances can be readonly and represent a special state
+(e.g. one instance for every official version).
+
+Another instance could be for the active development of diamond itself.
+
+The wikis could easily link with each other so that development
+versions can pull everything they don't change from a central wiki.
+This would support a very component oriented development style, too.
+
+Wikis support versioning and so we could naturally integrate somthing
+like git into the wiki.
+
+Links from and to the bug tracking system would be trivial.
+
+Enhanced IDE features like a debugger or merge tool could be integrated
+using AJAX.
+
+
+
+@A@<Function Definition and Invocation@>
+
+
+@B@<Safe Function Calls@>
+
+The order of arguments in function calls doesn't matter in diamond.
+This eliminates alot of errors and confusion and thus makes function
+calls safe.
+
+The actual arguments of a function call are assigned to the right
+formal argument as discussed in the subsections of this section.
+
+The subsections are ordered according to the priority.
+So only arguments that can't be assigned according to the first
+subsection will be assigned according to the second subsection.
+
+If an actual argument can't be assigned according to all subsections,
+an error is reported.
+
+
+@C@<Function Calls with Named Arguments@>
+
+The arguments are normally assigned using named arguments while calling
+the function:
+@$@<Function with Named Arguments@>==@{
+Func "Show Named Args":String arg1:String arg2:String : ...
+@}
+
+Can be called:
+@$@<Function Called with Named Arguments@>==@{
+    @@"Show Named Args" arg1="Argument 1" arg2="Argument 2"
+@}
+
+
+@C
+If a function argument has a type that no other argument has, the name
+can be left out:
+@$@<Function Arguments with Different Types@>==@{
+Func "Show Different Args":String arg1:String arg2:Int :
+    ...
+@}
+
+Can be called:
+@$@<Function Called with Different Types@>==@{
+    @@"Show Different Args" "Argument 1" 123
+@}
+
+
+@C
+If a function argument has the same name in the calling function as in the
+function beeing called, the name may be omited.
+The function:
+@$@<Function Arguments with Local Names@>==@{
+Func "Show Args With Local Names":String arg1:String arg2:String :
+    ...
+@}
+
+Can be called like this:
+@$@<Function Called with Local Arguments@>==@{
+    arg1 = "Argument 1"
+    arg2 = "Argument 2"
+    @@"Show Args With Local Names" arg1 arg2
+@}
+
+The names of values should be meaningful and chosen consistently.
+This rule encourages this.
+
+
+
+@B@<Function Calls Using Default Arguments@>
+
+Functions can be called with less than the number of formal arguments
+if the missing arguments have default values.
+Of course the arguments still have to be assignable according to the
+rules above.
+
+So the function:
+@$@<Function with Default Arguments@>==@{
+Func "Show Default Args" arg1:String arg2="Default 1" arg3="Default 2" :
+    ...
+@}
+
+Can be called like this:
+@$@<Function Called with Default Arguments@>==@{
+    @@"Show Default Args" "Only argument without default"
+@}
+
+Or:
+@$@<Function Called with One Default Argument@>==@{
+    @@"Show Default Args" "Argument without default" arg2="Argument 2"
+@}
+
+But @/not@/:
+@$@<Function Called with Wrong Arguments@>==@{
+    (@@"Show Default Args" "Argument without default"
+                           "What should I be assigned to?")
+@}
+
+
+
+@B@<Local Functions@>
+
+Functions that are defined in the local context of another function can make
+special use of default arguments.
+They can not only assign constants as default values but values defined in the
+enclosing function too.
+
+So this is perfectly valid and idiomatic diamond code:
+@$@<Function Containing Local Function@>==@{
+Func "Function Containing Local Function"
+    value1 = 2 + 3
+    @@"Local Function"
+
+    Func "Local Function" arg=value1
+        ...
+@}
+
+This is particulary useful when calling a local function several times or
+in a context where arguments would be confusing.
+
+Functions can only call their direct children functions,
+all of their (grand) parent functions and
+all siblings of their (grand) parent functions.
+
+This example demonstrates this (it doesn't run
+because of endless recursion but it compiles):
+@$@<Deeply nested Functions@>==@{
+Func "Outer Level Function":
+    @@"Some Other Function on Outer Level"
+    @@"Outer Level Function"
+    @@"Inner Level Function 1"
+    @@"Inner Level Function 2"
+    # Doesn't work:
+    # @@"Inner Inner Level Funciton 1.1"
+    # @@"Inner Inner Level Funciton 1.2"
+    # @@"Inner Inner Level Funciton 2.1"
+
+    Func "Inner Level Function 1":
+        @@"Some Other Function on Outer Level"
+        @@"Outer Level Function"
+        @@"Inner Level Function 1"
+        @@"Inner Level Function 2"
+        @@"Inner Inner Level Funciton 1.1"
+        @@"Inner Inner Level Funciton 1.2"
+        # Doesn't work:
+        # @@"Inner Inner Level Funciton 2.1"
+
+        Func "Inner Inner Level Funciton 1.1":
+            @@"Some Other Function on Outer Level"
+            @@"Outer Level Function"
+            @@"Inner Level Function 1"
+            @@"Inner Level Function 2"
+            @@"Inner Inner Level Funciton 1.1"
+            @@"Inner Inner Level Funciton 1.2"
+            # Doesn't work:
+            # @@"Inner Inner Level Funciton 2.1"
+
+        Func "Inner Inner Level Funciton 1.2":
+            @@"Some Other Function on Outer Level"
+            @@"Outer Level Function"
+            @@"Inner Level Function 1"
+            @@"Inner Level Function 2"
+            @@"Inner Inner Level Funciton 1.1"
+            @@"Inner Inner Level Funciton 1.2"
+            # Doesn't work:
+            # @@"Inner Inner Level Funciton 2.1"
+
+    Func "Inner Level Function 2":
+        @@"Some Other Function on Outer Level"
+        @@"Outer Level Function"
+        @@"Inner Level Function 1"
+        @@"Inner Level Function 2"
+        @@"Inner Inner Level Funciton 2.1"
+        # Doesn't work:
+        # @@"Inner Inner Level Funciton 1.1"
+        # @@"Inner Inner Level Funciton 1.2"
+
+        Func "Inner Inner Level Funciton 2.1":
+            @@"Some Other Function on Outer Level"
+            @@"Outer Level Function"
+            @@"Inner Level Function 1"
+            @@"Inner Level Function 2"
+            @@"Inner Inner Level Funciton 2.1"
+            # Doesn't work:
+            # @@"Inner Inner Level Funciton 1.1"
+            # @@"Inner Inner Level Funciton 1.2"
+@}
+
+@O@<dummy.dia@>==@{
+Main "dummy":
+@<Function Called with Named Arguments@>
+@<Function Called with Different Types@>
+@<Function Called with Local Arguments@>
+@<Function Called with Default Arguments@>
+@<Function Called with One Default Argument@>
+@<Function Called with Wrong Arguments@>
+
+
+# Here the normal functions come:
+
+@<Function Arguments with Different Types@>
+
+@<Function Arguments with Local Names@>
+
+@<Function with Named Arguments@>
+
+@<Function with Default Arguments@>
+
+@<Function Containing Local Function@>
+
+@<Deeply nested Functions@>
+@}
+@!---------------------------------------!
+@!   End of Diamond Ideas .fw File       !
+@!---------------------------------------!
+
