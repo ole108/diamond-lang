@@ -1,23 +1,65 @@
+@C@<Abstract Syntax Tree@>
+
+The AST contains the structure of a diamond program.
+
+It lives in the parser package and builds only on the @{common@} package.
+@O@<parser/ast.go@>==@{@-
 package parser
 
 import (
   "diamondlang/common";
 )
 
+@<Basic AST node@>
 
+@<Expression AST node@>
+
+@<Literal AST node@>
+
+@<Value AST node@>
+
+@<Constant AST node@>
+
+@<Function call AST node@>
+
+@<Assignment AST node@>
+
+@<Block expression AST node@>
+
+@<Function prototype AST node@>
+
+@<Function definition AST node@>
+@}
+
+
+@D Every AST node contains a piece of the source buffer.
+This is especially helpful for error messages.
+@$@<Basic AST node@>==@{@-
 type AstNode struct {
   srcPiece  common.SrcPiece;
 }
 func (an *AstNode) SourcePiece() common.SrcPiece { return an.srcPiece; }
+@}
 
 
+@D Expression AST nodes are basic AST nodes that have a data type.
+@$@<Expression AST node@>==@{@-
 type ExprAst struct {
   *AstNode;
   dataType  common.DataTypeEnum;
 }
 func (an *ExprAst) DataType() common.DataTypeEnum { return an.dataType; }
+@}
 
 
+@D Literals are constants directly typed in the source code like
+123, 'c' or "string" for integer numbers, characters and strings.
+The literal AST node adds the interpreted value ready for usage to
+the expression AST node.
+
+The value is kept in a generic way and can be converted to its real type
+with some helper functions in the common package.
+@$@<Literal AST node@>==@{@-
 type LiteralExprAst struct {
   *ExprAst;
   value  interface{};
@@ -27,8 +69,12 @@ func NewLiteralExprAst(piece common.SrcPiece, dataType common.DataTypeEnum,
                        value interface{}) common.LiteralExprAst {
   return &LiteralExprAst{&ExprAst{&AstNode{piece}, dataType}, value};
 }
+@}
 
 
+@D Values are identifiers for data values in the language.
+Like all expressions they have a data type and they can contain sub IDs.
+@$@<Value AST node@>==@{@-
 type ValueExprAst struct {
   *ExprAst;
   value  string;
@@ -38,10 +84,17 @@ func (an *ValueExprAst) ValueName() string { return an.value; }
 func (an *ValueExprAst) SubIds() []common.SubId { return an.subs; }
 func NewValueExprAst(piece common.SrcPiece, value string,
                      subs []common.SubId) common.ValueExprAst {
-  return &ValueExprAst{&ExprAst{&AstNode{piece}, common.TYPE_UNKNOWN}, value, subs};
+  return &ValueExprAst{&ExprAst{&AstNode{piece}, common.TYPE_UNKNOWN},
+                       value, subs};
 }
+@}
 
 
+@D Constants are values are identifiers for constant data values.
+Like all expressions they have a data type and they can contain sub IDs.
+Constants are global and so the ID for a constant can contain the name
+of a module.
+@$@<Constant AST node@>==@{@-
 type ConstantExprAst struct {
   *ExprAst;
   module   string;
@@ -56,8 +109,19 @@ func NewConstantExprAst(piece common.SrcPiece, module string, constant string,
   return &ConstantExprAst{&ExprAst{&AstNode{piece}, common.TYPE_UNKNOWN},
                           module, constant, subs};
 }
+@}
 
 
+@D Function calls are expressions that consist of the function name,
+the actual arguments (that are themself expressions).
+Functions can be public and so the function call can contain the name
+of a module.
+Functions calls can have different call types (free calls or bound calls)
+and can be half applied.
+
+If a function call is half applied, the result type of the function call is
+a function itself.
+@$@<Function call AST node@>==@{@-
 type CallExprAst struct {
   *ExprAst;
   module      string;
@@ -77,8 +141,12 @@ func NewCallExprAst(piece common.SrcPiece, module string, function string,
   return &CallExprAst{&ExprAst{&AstNode{piece}, common.TYPE_UNKNOWN},
                       module, function, typ, halfApplied, args};
 }
+@}
 
 
+@D An assignment is simply an expression that optionally assigned to a value,
+e.g.: @{ value = expression @}
+@$@<Assignment AST node@>==@{@-
 type AssignmentAst struct {
   *AstNode;
   value common.ValueExprAst;
@@ -90,21 +158,33 @@ func NewAssignmentAst(piece common.SrcPiece, value common.ValueExprAst,
                       expr common.ExprAst) common.AssignmentAst {
   return &AssignmentAst{&AstNode{piece}, value, expr};
 }
+@}
 
 
+@D A block is a sequence of statements (at the moment only assignments are
+recognized).
+The value of the last expression or assignment is the result of the block.
+@$@<Block expression AST node@>==@{@-
 type BlockExprAst struct {
   *ExprAst;
   assignments []common.AssignmentAst;
   expr  common.ExprAst;
 }
-func (an *BlockExprAst) Assignments() []common.AssignmentAst { return an.assignments; }
+func (an *BlockExprAst) Assignments() []common.AssignmentAst {
+  return an.assignments;
+}
 func (an *BlockExprAst) Expr() common.ExprAst { return an.expr; }
 func NewBlockExprAst(piece common.SrcPiece, assignments []common.AssignmentAst,
                      expr common.ExprAst) common.BlockExprAst {
-  return &BlockExprAst{&ExprAst{&AstNode{piece}, common.TYPE_UNKNOWN}, assignments, expr};
+  return &BlockExprAst{&ExprAst{&AstNode{piece}, common.TYPE_UNKNOWN},
+                       assignments, expr};
 }
+@}
 
 
+@D A function prototype is the declaration of a function and contains next to
+the name and result type of the function the formal arguments of the function.
+@$@<Function prototype AST node@>==@{@-
 type PrototypeAst struct {
   *AstNode;
   function string;
@@ -112,14 +192,19 @@ type PrototypeAst struct {
   args     []common.Arg;
 }
 func (an *PrototypeAst) FuncName() string { return an.function; }
-func (an *PrototypeAst) FuncDataType() common.DataTypeEnum { return an.dataType; }
+func (an *PrototypeAst) FuncDataType() common.DataTypeEnum {
+  return an.dataType;
+}
 func (an *PrototypeAst) Args() []common.Arg { return an.args; }
 func NewPrototypeAst(piece common.SrcPiece, function string,
         dataType common.DataTypeEnum, args []common.Arg) common.PrototypeAst {
   return &PrototypeAst{&AstNode{piece}, function, dataType, args};
 }
+@}
 
 
+@D A function definition extends a function prototype with the function body.
+@$@<Function definition AST node@>==@{@-
 type FunctionAst struct {
   common.PrototypeAst;
   body  common.ExprAst;
@@ -129,4 +214,5 @@ func NewFunctionAst(piece common.SrcPiece, prototype common.PrototypeAst,
                     body common.ExprAst) common.FunctionAst {
   return &FunctionAst{prototype, body};
 }
+@}
 

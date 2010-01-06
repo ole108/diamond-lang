@@ -1,0 +1,8 @@
+
+@B@<Package parser@>
+The parser contains definitions for the abstract syntax tree (AST) and
+the parser that transforms a stream of tokens into such an AST.
+
+@i parser/ast.go.fw
+
+

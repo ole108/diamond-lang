@@ -1,0 +1,37 @@
+@t vskip 40 mm
+@t title titlefont centre "Hairy Wombat"
+@t title titlefont centre "Simulation"
+@t vskip 10 mm
+@t title smalltitlefont centre "A Program in Six Parts"
+@t title smalltitlefont centre "Simulating the Life of"
+@t title smalltitlefont centre "Some Hairy Wombats"
+@t vskip 20 mm
+@t title normalfont left "By Zqitzypba Ypongslrzz"
+@t new_page
+@t table_of_contents
+@t new_page
+
+
+@A@<The Diamond Programming Language@>
+
+The language is implemented by parts that build on each other:
+
+The @{common@} package is used by all other packages and contains
+central declarations and definitions.
+
+The @{srcbuf@} package contains the source buffer that provides characters
+to the lexer/scanner. It is able to count lines and provides markers into
+the buffer and pieces of the source buffer (using markers).
+
+The @{lexer@} package contains the lexer/scanner and provides tokens to the
+parser.
+
+The @{tokbuf@} package contains a buffer that can hold multiple tokens and
+is able to manipulate tokens according to previous of following tokens.
+
+The @{parser@} package contains the parser that build an abstract syntax tree
+(AST) out of the tokens it gets from the token buffer.
+
+
+@i parser/parser.go.fw
+
