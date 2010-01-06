@@ -70,9 +70,13 @@ func (sb *SrcBuffer) NotAtStartOfLine() {
 }
 
 // remove old lines from the buffer
+// Caution: This is the only way to remove line and to prevent a buffer overflow!
+//          If lines would be removed automatically from the buffer it would break
+//          tokens spanning multiple lines!
 func (sb *SrcBuffer) ClearUpTo(mark common.SrcMark) {
-  for mark.Elem != sb.buf.Front() {
-    sb.buf.Remove(sb.buf.Front());
+  elem := mark.Elem;
+  for elem.Prev() != nil {
+    sb.buf.Remove(elem.Prev());
   }
 }
 
@@ -118,7 +122,7 @@ func (sb *SrcBuffer) gotoNextLine() {
 // read a new line and append it to the source buffer
 func (sb *SrcBuffer) readNewLine() {
   if sb.buf.Len() > MAX_BUFFER_LINES {
-    sb.Error("Buffer overflow; please preak up your code into smaller pieces");
+    sb.Error("Buffer overflow; please break up your code into smaller pieces");
   }
 
   num := 0;

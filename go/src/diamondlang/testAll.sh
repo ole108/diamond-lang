@@ -8,6 +8,7 @@ for dir in $SUBDIRS ; do
   echo "$dir:"
   cd "$BASEDIR/$dir"
   make 'test' || exit 1
+  make 'clean'
   cd -
 done
 

@@ -152,6 +152,7 @@ type SrcBuffer interface {
   NewMark() SrcMark;
   NewPiece(start SrcMark) SrcPiece;
   NewAnyPiece(start SrcMark, end SrcMark) SrcPiece;
+  ClearUpTo(mark SrcMark);
 }
 
 // The interface all tokens returned from the Lexer implement
@@ -173,10 +174,12 @@ type Lexer interface {
   NewAnyTok(typ TokEnum, start SrcMark, end SrcMark) Token;
   NewSpaceTok(tok Token, space int, atStartOfLine bool) Token;
   Error(msg string);
+  ClearUpTo(mark SrcMark);
 }
 
 type TokenBuffer interface {
   GetToken() Token;
+  ClearUpTo(tok Token);
   Error(msg string);
 }
 

@@ -26,6 +26,10 @@ func (lx *Lexer) Error(msg string) {
   lx.srcBuf.Error(msg);
 }
 
+func (lx *Lexer) ClearUpTo(mark common.SrcMark) {
+  lx.srcBuf.ClearUpTo(mark);
+}
+
 func (lx *Lexer) nextChar() {
   lx.curChar = lx.srcBuf.Getch();
 }

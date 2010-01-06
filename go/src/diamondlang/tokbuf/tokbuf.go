@@ -70,6 +70,11 @@ func (tb *tokBuf) ensureSize() {
   }
 }
 
+// remove old lines from the underlying source buffer
+func (tb *tokBuf) ClearUpTo(tok common.Token) {
+  tb.lx.ClearUpTo(tok.SourcePiece().Start());
+}
+
 // special handling of EOF (so we have valid code if possible)
 func handleEof(tok common.Token, tb *tokBuf) bool {
   if tok.Type() == common.TOK_EOF {
@@ -85,7 +90,7 @@ func handleEof(tok common.Token, tb *tokBuf) bool {
 
 func handleSpace(tok common.Token, tb *tokBuf) bool {
   if tok.Type() == common.TOK_SPACE {
-    spaceTok := tb.token2space(tok);
+    spaceTok := lexer.Token2space(tok);
     if spaceTok.AtStartOfLine() {
       handlePossibleIndent(tok, tb);
     } else {
@@ -112,7 +117,7 @@ func handlePossibleIndent(tok common.Token, tb *tokBuf) {
 }
 
 func handleIndent(tok common.Token, tok2 common.Token, tb *tokBuf) {
-  handled := recordAnyIndent(tb.token2space(tok).Space(), tok, tb);
+  handled := recordAnyIndent(lexer.Token2space(tok).Space(), tok, tb);
   if handled {
     tb.tokBuf.PushBack(tok2);
   } else {
@@ -196,24 +201,8 @@ func handleDefault(tok common.Token, tb *tokBuf) bool {
 }
 
 func (tb *tokBuf) any2token(val interface{}) common.Token {
-  switch t := val.(type) {
-  case common.Token:
-    return t;
-  default:
-    tb.Error("Not a token type");
-  }
-
-  return nil;
-}
-
-func (tb *tokBuf) token2space(tok common.Token) *lexer.SpaceTok {
-  switch t := tok.(type) {
-  case *lexer.SpaceTok:
-    return t;
-  default:
-    tb.Error("Not a space token");
-  }
-
-  return nil;
+  tok, ok := val.(common.Token);
+  if !ok { tb.Error("Not a token type"); }
+  return tok;
 }
 
