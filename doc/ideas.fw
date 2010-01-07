@@ -130,6 +130,20 @@ So usage befor definition is the norm.
 
 Aswell imports, etc. should be possible to be made anywhere.
 
+Toplevel stuff like constants, type definitions, functions, ...
+can be organized in sections (using the 'Sect' keyword) and
+such sections can be put/called in other sections or the toplevel
+program of course.
+
+It is usually a good idea to have a single section as top level.
+
+Sections help to organize the code into a tree structure.
+
+Sections can't be misused as simple text macros.
+They can't contain arbitrary text string (only types, imports,
+functions, etc. are allowed) and they can be used only at
+limited places.
+
 
 @B@<Wiki as Development Environment@>
 A real wiki (with the compiler as backend) as development environment

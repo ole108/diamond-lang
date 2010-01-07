@@ -10,7 +10,7 @@ import (
 // --------------------------------------------------------------------------
 
 const MAX_PARENS = 8
-const OPERATOR_CHARS = "+-*/%^<>!=&|?@$~"
+const OPERATOR_CHARS = "+-*/%^<>!=&|?$~"
 const NUM_CHARS = "_0123456789abcdefghijklmnopqrstuvwxyz"
 
 

@@ -1,12 +1,8 @@
 @t vskip 40 mm
-@t title titlefont centre "Hairy Wombat"
-@t title titlefont centre "Simulation"
-@t vskip 10 mm
-@t title smalltitlefont centre "A Program in Six Parts"
-@t title smalltitlefont centre "Simulating the Life of"
-@t title smalltitlefont centre "Some Hairy Wombats"
+@t title titlefont centre "A Parser for the"
+@t title titlefont centre "Diamond"
+@t title titlefont centre "Programming Language"
 @t vskip 20 mm
-@t title normalfont left "By Zqitzypba Ypongslrzz"
 @t new_page
 @t table_of_contents
 @t new_page

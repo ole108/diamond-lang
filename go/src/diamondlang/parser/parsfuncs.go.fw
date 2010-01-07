@@ -1,0 +1,52 @@
+@C@<Constructing the AST from tokens@>
+
+@O@<parser/parsfuncs.go@>==@{
+package parser
+
+import (
+  "diamondlang/common";
+  "diamondlang/lexer";
+)
+
+@<Parse literal number expression@>
+
+@<Parse literal character expression@>
+
+@<Parse literal string expression@>
+@}
+
+@D Number expressions are easy to parse since only 8 byte integers are
+possible. Thus the only possible current token is an integer token that
+already contains the converted value.
+@$@<Parse literal number expression@>==@{
+func (p *parser) ParseNumberExpr() common.ExprAst {
+  it := lexer.Token2int(p.curTok);
+  pi := new(int64);
+  *pi = it.Value();
+  p.fetchNextToken(); // consume the number
+  return NewLiteralExprAst(it.SourcePiece(), common.TYPE_INT, pi);
+}
+@}
+
+@D
+@$@<Parse literal character expression@>==@{
+func (p *parser) ParseCharExpr() common.ExprAst {
+  ct := lexer.Token2char(p.curTok);
+  pc := new(byte);
+  *pc = ct.Value();
+  p.fetchNextToken(); // consume the character
+  return NewLiteralExprAst(ct.SourcePiece(), common.TYPE_CHAR, pc);
+}
+@}
+
+@D
+@$@<Parse literal string expression@>==@{
+func (p *parser) ParseStringExpr() common.ExprAst {
+  st := lexer.Token2string(p.curTok);
+  ps := new(string);
+  *ps = st.Value();
+  p.fetchNextToken(); // consume the character
+  return NewLiteralExprAst(st.SourcePiece(), common.TYPE_CHAR, ps);
+}
+@}
+

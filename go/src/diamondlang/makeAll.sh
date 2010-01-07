@@ -1,6 +1,9 @@
 #!/bin/bash
 
-fw "./diamondlang.fw" || exit 1
+if ! fw +U +D "./diamondlang.fw" &> /dev/null ; then
+  cat "./diamondlang.lis"
+  exit 1
+fi
 rm -f *.lis
 
 BASEDIR=$(dirname "$0")

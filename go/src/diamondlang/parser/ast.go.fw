@@ -1,6 +1,7 @@
 @C@<Abstract Syntax Tree@>
 
-The AST contains the structure of a diamond program.
+The file @{ast.go@} contains the definitions for the various AST nodes
+that build the structure of a diamond program.
 
 It lives in the parser package and builds only on the @{common@} package.
 @O@<parser/ast.go@>==@{@-
@@ -34,7 +35,7 @@ import (
 
 @D Every AST node contains a piece of the source buffer.
 This is especially helpful for error messages.
-@$@<Basic AST node@>==@{@-
+@$@<Basic AST node@>==@{
 type AstNode struct {
   srcPiece  common.SrcPiece;
 }
@@ -43,7 +44,7 @@ func (an *AstNode) SourcePiece() common.SrcPiece { return an.srcPiece; }
 
 
 @D Expression AST nodes are basic AST nodes that have a data type.
-@$@<Expression AST node@>==@{@-
+@$@<Expression AST node@>==@{
 type ExprAst struct {
   *AstNode;
   dataType  common.DataTypeEnum;
@@ -59,7 +60,7 @@ the expression AST node.
 
 The value is kept in a generic way and can be converted to its real type
 with some helper functions in the common package.
-@$@<Literal AST node@>==@{@-
+@$@<Literal AST node@>==@{
 type LiteralExprAst struct {
   *ExprAst;
   value  interface{};
@@ -74,7 +75,7 @@ func NewLiteralExprAst(piece common.SrcPiece, dataType common.DataTypeEnum,
 
 @D Values are identifiers for data values in the language.
 Like all expressions they have a data type and they can contain sub IDs.
-@$@<Value AST node@>==@{@-
+@$@<Value AST node@>==@{
 type ValueExprAst struct {
   *ExprAst;
   value  string;
@@ -94,7 +95,7 @@ func NewValueExprAst(piece common.SrcPiece, value string,
 Like all expressions they have a data type and they can contain sub IDs.
 Constants are global and so the ID for a constant can contain the name
 of a module.
-@$@<Constant AST node@>==@{@-
+@$@<Constant AST node@>==@{
 type ConstantExprAst struct {
   *ExprAst;
   module   string;
@@ -121,7 +122,7 @@ and can be half applied.
 
 If a function call is half applied, the result type of the function call is
 a function itself.
-@$@<Function call AST node@>==@{@-
+@$@<Function call AST node@>==@{
 type CallExprAst struct {
   *ExprAst;
   module      string;
@@ -146,7 +147,7 @@ func NewCallExprAst(piece common.SrcPiece, module string, function string,
 
 @D An assignment is simply an expression that optionally assigned to a value,
 e.g.: @{ value = expression @}
-@$@<Assignment AST node@>==@{@-
+@$@<Assignment AST node@>==@{
 type AssignmentAst struct {
   *AstNode;
   value common.ValueExprAst;
@@ -164,7 +165,7 @@ func NewAssignmentAst(piece common.SrcPiece, value common.ValueExprAst,
 @D A block is a sequence of statements (at the moment only assignments are
 recognized).
 The value of the last expression or assignment is the result of the block.
-@$@<Block expression AST node@>==@{@-
+@$@<Block expression AST node@>==@{
 type BlockExprAst struct {
   *ExprAst;
   assignments []common.AssignmentAst;
@@ -184,7 +185,7 @@ func NewBlockExprAst(piece common.SrcPiece, assignments []common.AssignmentAst,
 
 @D A function prototype is the declaration of a function and contains next to
 the name and result type of the function the formal arguments of the function.
-@$@<Function prototype AST node@>==@{@-
+@$@<Function prototype AST node@>==@{
 type PrototypeAst struct {
   *AstNode;
   function string;
@@ -204,7 +205,7 @@ func NewPrototypeAst(piece common.SrcPiece, function string,
 
 
 @D A function definition extends a function prototype with the function body.
-@$@<Function definition AST node@>==@{@-
+@$@<Function definition AST node@>==@{
 type FunctionAst struct {
   common.PrototypeAst;
   body  common.ExprAst;
