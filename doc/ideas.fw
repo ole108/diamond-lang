@@ -297,7 +297,7 @@ all siblings of their (grand) parent functions.
 
 This example demonstrates this (it doesn't run
 because of endless recursion but it compiles):
-@$@<Deeply nested Functions@>==@{
+@$@<Deeply Nested Functions@>==@{
 Func "Outer Level Function":
     @@"Some Other Function on Outer Level"
     @@"Outer Level Function"
@@ -359,7 +359,146 @@ Func "Outer Level Function":
             # @@"Inner Inner Level Funciton 1.2"
 @}
 
+
+
+@A@<Type System@>
+One point I am unsure of is:
+
+For local uses of types, names should match exactly.
+Names should be chosen carefully and names matter.
+
+But for data from (potentially) other languages we should not
+enforce that. Different languages have different conventions, ...
+So we should have a way to at least check the structure and then
+convert it to one of our names.
+
+
+@B@<Basic Types@>
+The basic types are Bool, Int, Char and String.
+Later we will support more basic types like Float, etc.
+We should try to wait with that until diamond is ready for prime time.
+
+Bool is just a 1 bit integer in LLVM.
+The usual boolean operations will be available for it.
+
+Int is a 8 byte integer.
+Later we will support Int1, Int2, Int3, Int4, Int6 and Int8
+which are 1 to 8 bytes long.
+
+Char is first implemented by a simple 1 byte integer and
+only ASCII characters are supported.
+Later we will support Unicode characters.
+We should try to wait with that until diamond is ready for prime time.
+
+String is really an array of characters.
+
+
+@B Alias types are simply types that are identical to some other type
+regarding the contained data.
+But they can support a different set of functions.
+Syntax:
+@$@<Alias Types@>==@{
+Type AliasName BaseType
+@}
+Of course we need a simple way to get functions that work with @{BaseType@}
+to work with @{AliasName@} too.
+Possibilities:
+@$@<Alias Alternative 1@>==@{
+Type AliasName BaseType:
+    Import "path/package" As newpackage
+    Bind FuncA FuncB ...    # The functions are taken from BaseType
+@}
+Looks quite neat but might be difficult to transfer to other contexts
+(structures and functions).
+
+@$@<Alias Alternative 2@>==@{
+Type AliasName BaseType
+Import "path/package" As newpackage With AliasName As BaseType
+From "path/package" Import Func1 Func2 With AliasName As BaseType
+Bind FuncA FuncB ... From BaseType To AliasName
+Bind FuncC FuncD ... From "path/package" To AliasName
+@}
+Doesn't look as neat but seems to be exactly what we need inside
+functions anyway.
+Should work for structures too.
+
+@$@<Alias Alternative 3@>==@{
+Type AliasName BaseType With "path/package".* Bind FuncA FuncB ...
+@}
+Will get messy with more possibilities and special cases.
+
+
+@B Array types are very simple:
+@$@<Array Types@>==@{
+Array ArrayName BaseType
+@}
+
+Alternative (the @{*@} is used because an array usually gives multiple
+instances of the base type):
+@$@<Array Types 2@>==@{
+Type ArrayName *BaseType
+@}
+This would save an extra construct and one could use @{*BaseType@}
+at other places too.
+So it wouldn't be necessary to define the array type at all.
+
+Do we want that?
+
+
+@B Structure types are almost as simple:
+@$@<Structure Types@>==@{
+Struct StructName:
+    nam1 : Type1
+    nam2 : Type2
+    .
+    .
+    .
+    namN : TypeN
+@}
+
+
+@B@<Anonymous Structures@>
+Anonymous structures (tuples in Go, sequences in Python) are just like
+structures but the members are accessed with an index like arrays.
+Should we use/enforce parentheses?
+
+
+@B@<Generic Types@>
+This is the really tricky part. I am not sure how we can do that.
+I don't like to copy it from C++ or Java.
+
+
+@A@<Components@>
+
+@B@<Module@>
+A module might be unnecessary but would be simply a component without
+any checks.
+
+@B@<Component@>
+A component is a thing written in diamond that can be easily reused.
+Checks for data types and value ranges (pre and post conditions) are used.
+
+@B@<Library@>
+A Library can be written in any language and data types have to be matched.
+
+@B@<Service@>
+A service is a service accessible over the internet.
+We will have special constraints and checks for these.
+There might be some evil guys out there.
+
+
 @O@<dummy.dia@>==@{
+@<Alias Types@>
+@<Alias Alternative 1@>
+@<Alias Alternative 2@>
+@<Alias Alternative 3@>
+
+@<Array Types@>
+@<Array Types 2@>
+
+@<Structure Types@>
+
+
 Main "dummy":
 @<Function Called with Named Arguments@>
 @<Function Called with Different Types@>
@@ -381,7 +520,7 @@ Main "dummy":
 
 @<Function Containing Local Function@>
 
-@<Deeply nested Functions@>
+@<Deeply Nested Functions@>
 @}
 @!---------------------------------------!
 @!   End of Diamond Ideas .fw File       !

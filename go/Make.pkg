@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
-DIAMONDROOT=$(HOME)/work/diamond-lang/go
 all: package install clean
 package: _obj/$(TARG).a
 testpackage: _test/$(TARG).a
@@ -17,7 +16,7 @@ dir=$(patsubst %/$(elem),%,./$(TARG))
 # ugly hack to deal with whitespaces in $GOROOT
 nullstring :=
 space := $(nullstring) # a space at the end
-QUOTED_GOROOT=$(subst $(space),\ ,$(DIAMONDROOT))
+QUOTED_GOROOT=$(subst $(space),\ ,$(GOROOT))
 
 pkgdir=$(QUOTED_GOROOT)/pkg/$(GOOS)_$(GOARCH)
 
@@ -32,8 +31,8 @@ INSTALLFILES+=$(patsubst %.go,$(pkgdir)/$(dir)/$(elem)_%.so,$(CGOFILES))
 PREREQ+=$(patsubst %,%.make,$(DEPS))
 
 coverage:
-#	gotest
-#	6cov -g $(shell pwd) $O.out | grep -v '_test\.go:'
+	gotest
+	6cov -g $(shell pwd) $O.out | grep -v '_test\.go:'
 
 clean:
 	rm -rf *.[$(OS)o] *.a [$(OS)].out *.cgo[12].go *.cgo[34].c *.so _obj _test _testmain.go $(CLEANFILES)
@@ -54,10 +53,10 @@ $(pkgdir)/$(TARG).a: package
 	cp _obj/$(TARG).a "$@"
 
 _go_.$O: $(GOFILES) $(PREREQ)
-	$(GC) -I $(pkgdir) -o $@ $(GOFILES)
+	$(GC) -o $@ $(GOFILES)
 
 _gotest_.$O: $(GOFILES) $(GOTESTFILES) $(PREREQ)
-	$(GC) -I $(pkgdir) -o $@ $(GOFILES) $(GOTESTFILES)
+	$(GC) -o $@ $(GOFILES) $(GOTESTFILES)
 
 _obj/$(TARG).a: _go_.$O $(OFILES)
 	@mkdir -p _obj/$(dir)
