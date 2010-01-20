@@ -13,7 +13,7 @@
 @A@<The Deathly Diseases of Programming@>
 These are the programming deseases that diamond tries to overcome.
 
-@B@<Unreadable programming@>
+@B@<Illiterate programming@>
 It is possible to write unreadable programs in any language.
 But some languages support readable or even literate programs
 much better than others.
@@ -485,6 +485,39 @@ A Library can be written in any language and data types have to be matched.
 A service is a service accessible over the internet.
 We will have special constraints and checks for these.
 There might be some evil guys out there.
+
+
+@A@<Internal Database@>
+Big systems are not so much held together and coupled by their components
+but more by the data.
+
+On the one hand the structure of (globally used) data is often not designed
+as clearly as components and functions but invented in an ad hoc manner
+instead.
+On the other hand great wisdom has gone into designing the structure of data
+stored in databases.
+
+So the logical solution to me is to provide internal databases.
+External databases are then just a slightly different implementation.
+Thus we can save a lot of confusion for applications that need
+a database anyway.
+Plus an internal (transient) database can be made persistent (and vice versa)
+with a very small change.
+
+I won't like to implement a standard SQL database for this.
+It is a really nice standard with some very good implementations.
+But I think it is a bit complex and won't scale good enough in the future.
+So my idea is currently to implement something like a MapReduce/BigTable
+database.
+This seems more inline with functional programming and it scales potentially
+very good (Google is using such a thing internally).
+
+Such internal databases could save us implementing a lot of data structures
+(they would be hidden by the database implementation).
+Of course we will still need the most important ones for side data
+(data used only internally in a function).
+
+A lot of things have to be explored and tested here.
 
 
 @O@<dummy.dia@>==@{
