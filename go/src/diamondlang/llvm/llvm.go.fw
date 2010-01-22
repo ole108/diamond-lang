@@ -1,0 +1,166 @@
+@B@<Package llvm@>
+The llvm package builds an interface to the Low Level Virtual Machine (LLVM)
+that is used for code generation.
+
+Specifically this package contains wrapper functions for accessing the
+LLVM C binding.
+The header files for the C binding can be found at:
+@{/usr/include/llvm-c/@}
+
+@/Please Note:@/ The wrapper functions have the same name as the C binding
+functions except we leave the 'LLVM' prefix out since go supports packages.
+
+We have a simple C example for a start: ~/work/llvm/*.c
+
+
+The file @{llvm.go@} contains the wrapper functions for accessing the
+LLVM C binding.
+@O@<llvm/llvm.go@>==@{@-
+package llvm
+
+/*
+// Headers required by LLVM
+#include <llvm-c/Core.h>
+#include <llvm-c/Analysis.h>
+#include <llvm-c/ExecutionEngine.h>
+#include <llvm-c/Target.h>
+#include <llvm-c/Transforms/Scalar.h>
+
+// General stuff
+#include <stdlib.h>
+*/
+import "C"
+import "unsafe"
+
+@<Initialisation and utility functions@>
+@<Operations on modules@>
+@<Operations on contexts@>
+@}
+
+
+The file @{llvm_test.go@} contains tests for the LLVM interface.
+@O@<llvm/llvm_test.go@>==@{@-
+package llvm
+
+import (
+  "testing";
+  "fmt";
+)
+
+func TestLlvm(t *testing.T) {
+  fmt.Println("LinkInJIT");
+  LinkInJIT();
+
+  fmt.Println("InitializeNativeTarget");
+  InitializeNativeTarget();
+
+  fmt.Println("ModuleCreateWithNameInContext");
+  llvmMod := ModuleCreateWithNameInContext("tstMod", GetGlobalContext());
+
+  fmt.Println("DisposeModule");
+  DisposeModule(llvmMod);
+
+  if (false) { t.Error("The LLVM interface doesn't work!"); }
+}
+@}
+
+
+@C
+@$@<Initialisation and utility functions@>==@{
+@<LinkIns@>
+@<InitializeNativeTarget@>
+@}
+
+@D You can choose to link in the JIT (Just In Time compiler) or
+the interpreter for LLVM.
+@$@<LinkIns@>==@{
+func LinkInInterpreter() {
+  C.LLVMLinkInInterpreter();
+}
+
+func LinkInJIT() {
+  C.LLVMLinkInJIT();
+}
+@}
+
+@D A LLVM target is a platform like X86 or ARM.
+This little functions initializes LLVM to use the right one.
+This is needed for the JIT.
+@$@<InitializeNativeTarget@>==@{
+func InitializeNativeTarget() {
+  C.LLVMInitializeNativeTarget();
+}
+@}
+
+
+@C A LLVM context simply exists for thread safety.
+It allows parallel compilation of independent LLVM modules.
+
+We will just work with the global LLVM context for a long time.
+@$@<Operations on contexts@>==@{
+type LlvmContext C.LLVMContextRef;
+
+@<ContextCreate@>
+@<GetGlobalContext@>
+@<ContextDispose@>
+@}
+
+@D
+@$@<ContextCreate@>==@{
+func ContextCreate() LlvmContext {
+  return LlvmContext(C.LLVMContextCreate());
+}
+@}
+
+@D
+@$@<GetGlobalContext@>==@{
+func GetGlobalContext() LlvmContext {
+  return LlvmContext(C.LLVMGetGlobalContext());
+}
+@}
+
+@D
+@$@<ContextDispose@>==@{
+func ContextDispose(llvmCtx LlvmContext) {
+  C.LLVMDisposeModule(C.LLVMContextRef(llvmCtx));
+}
+@}
+
+@C LLVM modules correspond nicely to diamonds packages and contain mainly
+a symbol table and a list of functions.
+@$@<Operations on modules@>==@{
+type LlvmModule C.LLVMModuleRef;
+
+@<ModuleCreateWithName@>
+@<ModuleCreateWithNameInContext@>
+@<DisposeModule@>
+@}
+
+@D Create a LLVM module with the given name and the global LLVM context.
+@$@<ModuleCreateWithName@>==@{
+func ModuleCreateWithName(moduleId string) LlvmModule {
+  p := C.CString(moduleId);
+  mod := C.LLVMModuleCreateWithName(p);
+  C.free(unsafe.Pointer(p));
+  return LlvmModule(mod);
+}
+@}
+
+@D Create a LLVM module with the given name and LLVM context.
+@$@<ModuleCreateWithNameInContext@>==@{
+func ModuleCreateWithNameInContext(moduleId string, llvmCtx LlvmContext)
+       LlvmModule {
+  p := C.CString(moduleId);
+  mod := C.LLVMModuleCreateWithNameInContext(p, C.LLVMContextRef(llvmCtx));
+  C.free(unsafe.Pointer(p));
+  return LlvmModule(mod);
+}
+@}
+
+@D Deletes the given LLVM module and frees the memory used by it.
+@$@<DisposeModule@>==@{
+func DisposeModule(llvmModule LlvmModule) {
+  C.LLVMDisposeModule(C.LLVMModuleRef(llvmModule));
+}
+@}
+

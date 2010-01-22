@@ -1,3 +1,3 @@
 # sourced by other files
-SUBDIRS="common srcbuf lexer tokbuf parser"
+SUBDIRS="common srcbuf lexer tokbuf llvm parser"
 

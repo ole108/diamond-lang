@@ -23,11 +23,15 @@ The @{lexer@} package contains the lexer/scanner and provides tokens to the
 parser.
 
 The @{tokbuf@} package contains a buffer that can hold multiple tokens and
-is able to manipulate tokens according to previous of following tokens.
+is able to manipulate tokens according to previous or following tokens.
 
 The @{parser@} package contains the parser that build an abstract syntax tree
 (AST) out of the tokens it gets from the token buffer.
 
+The @{llvm@} package contains an interface to the Low Level Virtual Machine
+(LLVM) that is used for code generation.
 
 @i parser/parser.go.fw
+
+@i llvm/llvm.go.fw
 

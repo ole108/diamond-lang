@@ -3,7 +3,7 @@ The parser contains definitions for the abstract syntax tree (AST),
 the parser type, some helper functions and
 the parser funcitons that transforms a stream of tokens into an AST.
 
-The file @{parser.go@} contains only the the parser type and the
+The file @{parser.go@} contains only the parser type and the
 helper functions.
 @O@<parser/parser.go@>==@{@-
 package parser
