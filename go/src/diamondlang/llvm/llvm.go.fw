@@ -31,6 +31,11 @@ package llvm
 */
 import "C"
 import "unsafe"
+import "fmt"
+
+@<constants@>
+
+@<dirtyTestFunc@>
 
 @<Initialisation and utility functions@>
 @<Operations on modules@>
@@ -47,6 +52,10 @@ import (
   "fmt";
 )
 
+func TestFirst(t *testing.T) {
+  dirtyTestFunc();
+}
+
 func TestLlvm(t *testing.T) {
   fmt.Println("LinkInJIT");
   LinkInJIT();
@@ -57,10 +66,66 @@ func TestLlvm(t *testing.T) {
   fmt.Println("ModuleCreateWithNameInContext");
   llvmMod := ModuleCreateWithNameInContext("tstMod", GetGlobalContext());
 
+  fmt.Println("DumpModule");
+  DumpModule(llvmMod);
+
   fmt.Println("DisposeModule");
   DisposeModule(llvmMod);
 
   if (false) { t.Error("The LLVM interface doesn't work!"); }
+}
+@}
+
+
+@C Define constants for different calling conventions.
+The usage of the C constants is really awkward because they are stongly typed
+signed integers and we need strongly typed unsigned integers.
+A conversion at runtime fails because the constants are defined as literals
+in a header file and thus don't exist anymore at runtime.
+@$@<constants@>==@{
+const (
+  CCallConv           = 0;
+  FastCallConv        = 8;
+  ColdCallConv        = 9;
+  X86StdcallCallConv  = 64;
+  X86FastcallCallConv = 65;
+)
+@}
+
+
+@C
+@$@<dirtyTestFunc@>==@{
+func dirtyTestFunc() {
+  LinkInJIT();
+  InitializeNativeTarget();
+  llvmMod := ModuleCreateWithNameInContext("tstMod", GetGlobalContext());
+
+  fac_args := [...]C.LLVMTypeRef{ C.LLVMInt32Type() };
+  pStr := C.CString("fac");
+  var fac C.LLVMValueRef = C.LLVMAddFunction(C.LLVMModuleRef(llvmMod), pStr,
+            C.LLVMFunctionType(C.LLVMInt32Type(), &fac_args[0], 1, 0));
+  C.free(unsafe.Pointer(pStr));
+  C.LLVMSetFunctionCallConv(fac, C.uint(CCallConv));
+  var n C.LLVMValueRef = C.LLVMGetParam(fac, 0);
+
+  pStr = C.CString("entry");
+  var entry C.LLVMBasicBlockRef = C.LLVMAppendBasicBlock(fac, pStr);
+  C.free(unsafe.Pointer(pStr));
+  pStr = C.CString("iftrue");
+  var iftrue C.LLVMBasicBlockRef = C.LLVMAppendBasicBlock(fac, pStr);
+  C.free(unsafe.Pointer(pStr));
+  pStr = C.CString("iffalse");
+  var iffalse C.LLVMBasicBlockRef = C.LLVMAppendBasicBlock(fac, pStr);
+  C.free(unsafe.Pointer(pStr));
+  pStr = C.CString("end");
+  var end C.LLVMBasicBlockRef = C.LLVMAppendBasicBlock(fac, pStr);
+  C.free(unsafe.Pointer(pStr));
+  var builder C.LLVMBuilderRef = C.LLVMCreateBuilder();
+
+  fmt.Println("Survived:", fac, n, entry, iftrue, iffalse, end, builder);
+
+  DumpModule(llvmMod);
+  DisposeModule(llvmMod);
 }
 @}
 
@@ -134,6 +199,7 @@ type LlvmModule C.LLVMModuleRef;
 @<ModuleCreateWithName@>
 @<ModuleCreateWithNameInContext@>
 @<DisposeModule@>
+@<DumpModule@>
 @}
 
 @D Create a LLVM module with the given name and the global LLVM context.
@@ -161,6 +227,13 @@ func ModuleCreateWithNameInContext(moduleId string, llvmCtx LlvmContext)
 @$@<DisposeModule@>==@{
 func DisposeModule(llvmModule LlvmModule) {
   C.LLVMDisposeModule(C.LLVMModuleRef(llvmModule));
+}
+@}
+
+@D Deletes the given LLVM module and frees the memory used by it.
+@$@<DumpModule@>==@{
+func DumpModule(llvmModule LlvmModule) {
+  C.LLVMDumpModule(C.LLVMModuleRef(llvmModule));
 }
 @}
 
