@@ -83,12 +83,28 @@ signed integers and we need strongly typed unsigned integers.
 A conversion at runtime fails because the constants are defined as literals
 in a header file and thus don't exist anymore at runtime.
 @$@<constants@>==@{
+type CallConv uint;
 const (
   CCallConv           = 0;
   FastCallConv        = 8;
   ColdCallConv        = 9;
   X86StdcallCallConv  = 64;
   X86FastcallCallConv = 65;
+)
+
+
+type IntPredicate int;
+const (
+  IntEQ = 32 + iota; /**< equal */
+  IntNE;      /**< not equal */
+  IntUGT;     /**< unsigned greater than */
+  IntUGE;     /**< unsigned greater or equal */
+  IntULT;     /**< unsigned less than */
+  IntULE;     /**< unsigned less or equal */
+  IntSGT;     /**< signed greater than */
+  IntSGE;     /**< signed greater or equal */
+  IntSLT;     /**< signed less than */
+  IntSLE;     /**< signed less or equal */
 )
 @}
 
@@ -122,7 +138,39 @@ func dirtyTestFunc() {
   C.free(unsafe.Pointer(pStr));
   var builder C.LLVMBuilderRef = C.LLVMCreateBuilder();
 
-  fmt.Println("Survived:", fac, n, entry, iftrue, iffalse, end, builder);
+  C.LLVMPositionBuilderAtEnd(builder, entry);
+  pStr = C.CString("n == 0");
+  var If C.LLVMValueRef = C.LLVMBuildICmp(builder,
+             C.LLVMIntPredicate(IntEQ), n,
+             C.LLVMConstInt(C.LLVMInt32Type(), 0, 0), pStr);
+  C.free(unsafe.Pointer(pStr));
+  C.LLVMBuildCondBr(builder, If, iftrue, iffalse);
+
+  C.LLVMPositionBuilderAtEnd(builder, iftrue);
+  var res_iftrue C.LLVMValueRef = C.LLVMConstInt(C.LLVMInt32Type(), 1, 0);
+  C.LLVMBuildBr(builder, end);
+
+  C.LLVMPositionBuilderAtEnd(builder, iffalse);
+  pStr = C.CString("n - 1");
+  var n_minus C.LLVMValueRef = C.LLVMBuildSub(builder, n,
+                  C.LLVMConstInt(C.LLVMInt32Type(), 1, 0), pStr);
+  C.free(unsafe.Pointer(pStr));
+  call_fac_args := [...]C.LLVMValueRef{ n_minus };
+  pStr = C.CString("fac(n - 1)");
+  var call_fac C.LLVMValueRef = C.LLVMBuildCall(builder, fac,
+                   &call_fac_args[0], 1, pStr);
+  C.free(unsafe.Pointer(pStr));
+  pStr = C.CString("n * fac(n - 1)");
+  var res_iffalse C.LLVMValueRef = C.LLVMBuildMul(builder, n, call_fac, pStr);
+  C.free(unsafe.Pointer(pStr));
+  C.LLVMBuildBr(builder, end);
+
+  C.LLVMPositionBuilderAtEnd(builder, end);
+  pStr = C.CString("result");
+  var res C.LLVMValueRef = C.LLVMBuildPhi(builder, C.LLVMInt32Type(), pStr);
+  C.free(unsafe.Pointer(pStr));
+
+  fmt.Println("Survived:", res, res_iffalse, res_iftrue);
 
   DumpModule(llvmMod);
   DisposeModule(llvmMod);
