@@ -1,0 +1,19 @@
+@C The @{executionEngine@} macro contains wrapper functions corresponding
+to the header file @{llvm-c/ExecutionEngine.h@} of the LLVM C binding.
+@$@<executionEngine@>==@{
+@<LinkIns@>
+@}
+
+
+@D You can choose to link in the JIT (Just In Time compiler) or
+the interpreter for LLVM.
+@$@<LinkIns@>==@{
+func LinkInInterpreter() {
+  C.LLVMLinkInInterpreter();
+}
+
+func LinkInJIT() {
+  C.LLVMLinkInJIT();
+}
+@}
+

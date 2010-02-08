@@ -34,13 +34,15 @@ import "unsafe"
 import "fmt"
 import "os"
 
-@<constants@>
+@<Utility functions@>
+
+// Macros corresponding to C header files:
+@<core@>
+@<executionEngine@>
+@<target@>
+@<analysis@>
 
 @<dirtyTestFunc@>
-
-@<Initialisation and utility functions@>
-@<Operations on modules@>
-@<Operations on contexts@>
 @}
 
 
@@ -77,45 +79,6 @@ func TestLlvm(t *testing.T) {
 }
 @}
 
-
-@C Define constants for different calling conventions.
-The usage of the C constants is really awkward because they are stongly typed
-signed integers and we need strongly typed unsigned integers.
-A conversion at runtime fails because the constants are defined as literals
-in a header file and thus don't exist anymore at runtime.
-@$@<constants@>==@{
-type CallConv uint;
-const (
-  CCallConv           = 0;
-  FastCallConv        = 8;
-  ColdCallConv        = 9;
-  X86StdcallCallConv  = 64;
-  X86FastcallCallConv = 65;
-)
-
-
-type IntPredicate int;
-const (
-  IntEQ = 32 + iota; /**< equal */
-  IntNE;      /**< not equal */
-  IntUGT;     /**< unsigned greater than */
-  IntUGE;     /**< unsigned greater or equal */
-  IntULT;     /**< unsigned less than */
-  IntULE;     /**< unsigned less or equal */
-  IntSGT;     /**< signed greater than */
-  IntSGE;     /**< signed greater or equal */
-  IntSLT;     /**< signed less than */
-  IntSLE;     /**< signed less or equal */
-)
-
-
-type VerifierFailureAction int
-const (
-  AbortProcessAction = iota; /* verifier will print to stderr and abort() */
-  PrintMessageAction;        /* verifier will print to stderr and return 1 */
-  ReturnStatusAction;        /* verifier will just return 1 */
-)
-@}
 
 
 @C
@@ -200,7 +163,7 @@ func dirtyTestFunc(num int) {
     os.Exit(1);
   }
 
-  DumpModule(llvmMod);
+//  DumpModule(llvmMod);
   // Optimizations:
   fmt.Println("\n\nOptimizing:");
   var pass C.LLVMPassManagerRef = C.LLVMCreatePassManager();
@@ -234,109 +197,26 @@ func dirtyTestFunc(num int) {
 
 
 @C
-@$@<Initialisation and utility functions@>==@{
-@<LinkIns@>
-@<InitializeNativeTarget@>
+@$@<Utility functions@>==@{
+@<CallStringFunc@>
 @}
 
-@D You can choose to link in the JIT (Just In Time compiler) or
-the interpreter for LLVM.
-@$@<LinkIns@>==@{
-func LinkInInterpreter() {
-  C.LLVMLinkInInterpreter();
-}
-
-func LinkInJIT() {
-  C.LLVMLinkInJIT();
-}
-@}
-
-@D A LLVM target is a platform like X86 or ARM.
-This little functions initializes LLVM to use the right one.
-This is needed for the JIT.
-@$@<InitializeNativeTarget@>==@{
-func InitializeNativeTarget() {
-  C.LLVMInitializeNativeTarget();
-}
-@}
-
-
-@C A LLVM context simply exists for thread safety.
-It allows parallel compilation of independent LLVM modules.
-
-We will just work with the global LLVM context for a long time.
-@$@<Operations on contexts@>==@{
-type LlvmContext C.LLVMContextRef;
-
-@<ContextCreate@>
-@<GetGlobalContext@>
-@<ContextDispose@>
-@}
-
-@D
-@$@<ContextCreate@>==@{
-func ContextCreate() LlvmContext {
-  return LlvmContext(C.LLVMContextCreate());
-}
-@}
-
-@D
-@$@<GetGlobalContext@>==@{
-func GetGlobalContext() LlvmContext {
-  return LlvmContext(C.LLVMGetGlobalContext());
-}
-@}
-
-@D
-@$@<ContextDispose@>==@{
-func ContextDispose(llvmCtx LlvmContext) {
-  C.LLVMDisposeModule(C.LLVMContextRef(llvmCtx));
-}
-@}
-
-@C LLVM modules correspond nicely to diamonds packages and contain mainly
-a symbol table and a list of functions.
-@$@<Operations on modules@>==@{
-type LlvmModule C.LLVMModuleRef;
-
-@<ModuleCreateWithName@>
-@<ModuleCreateWithNameInContext@>
-@<DisposeModule@>
-@<DumpModule@>
-@}
-
-@D Create a LLVM module with the given name and the global LLVM context.
-@$@<ModuleCreateWithName@>==@{
-func ModuleCreateWithName(moduleId string) LlvmModule {
-  p := C.CString(moduleId);
-  mod := C.LLVMModuleCreateWithName(p);
+@D Call the given function (usually a closure) with the given string
+argument. This utility function simply handles the conversion to  a
+C string and the deletion of the memory for the C string.
+@$@<CallStringFunc@>==@{
+func callWithString(strFunc func(s *C.char), s string) {
+  p := C.CString(s);
+  strFunc(p);
   C.free(unsafe.Pointer(p));
-  return LlvmModule(mod);
 }
 @}
 
-@D Create a LLVM module with the given name and LLVM context.
-@$@<ModuleCreateWithNameInContext@>==@{
-func ModuleCreateWithNameInContext(moduleId string, llvmCtx LlvmContext)
-       LlvmModule {
-  p := C.CString(moduleId);
-  mod := C.LLVMModuleCreateWithNameInContext(p, C.LLVMContextRef(llvmCtx));
-  C.free(unsafe.Pointer(p));
-  return LlvmModule(mod);
-}
-@}
 
-@D Deletes the given LLVM module and frees the memory used by it.
-@$@<DisposeModule@>==@{
-func DisposeModule(llvmModule LlvmModule) {
-  C.LLVMDisposeModule(C.LLVMModuleRef(llvmModule));
-}
-@}
+@i llvm/core.go.fw
 
-@D Deletes the given LLVM module and frees the memory used by it.
-@$@<DumpModule@>==@{
-func DumpModule(llvmModule LlvmModule) {
-  C.LLVMDumpModule(C.LLVMModuleRef(llvmModule));
-}
-@}
+@i llvm/executionEngine.go.fw
 
+@i llvm/target.go.fw
+
+@i llvm/analysis.go.fw

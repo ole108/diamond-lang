@@ -1,0 +1,16 @@
+@C The @{target@} macro contains wrapper functions corresponding
+to the header file @{llvm-c/Target.h@} of the LLVM C binding.
+@$@<target@>==@{
+@<InitializeNativeTarget@>
+@}
+
+
+@D A LLVM target is a platform like X86 or ARM.
+This little functions initializes LLVM to use the right one.
+This is needed for the JIT.
+@$@<InitializeNativeTarget@>==@{
+func InitializeNativeTarget() {
+  C.LLVMInitializeNativeTarget();
+}
+@}
+

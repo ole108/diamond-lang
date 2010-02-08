@@ -1,0 +1,20 @@
+@C The @{analysis@} macro contains wrapper functions corresponding
+to the header file @{llvm-c/Analysis.h@} of the LLVM C binding.
+@$@<analysis@>==@{
+@<analysisConstants@>
+@}
+
+@C The usage of the C constants is really awkward because they are
+stongly typed signed integers and we need strongly typed unsigned integers.
+A conversion at runtime fails because the constants are defined as literals
+in a header file and thus don't exist anymore at runtime.
+Thus we redefine the constants.
+@$@<analysisConstants@>==@{
+type VerifierFailureAction int
+const (
+  AbortProcessAction = iota; /* verifier will print to stderr and abort() */
+  PrintMessageAction;        /* verifier will print to stderr and return 1 */
+  ReturnStatusAction;        /* verifier will just return 1 */
+)
+@}
+

@@ -1,0 +1,126 @@
+@C The @{core@} macro contains wrapper functions corresponding
+to the header file @{llvm-c/Core.h@} of the LLVM C binding.
+@$@<core@>==@{
+@<coreConstants@>
+@<Operations on contexts@>
+@<Operations on modules@>
+@<Operations on integer types@>
+@}
+
+@C The usage of the C constants is really awkward because they are
+stongly typed signed integers and we need strongly typed unsigned integers.
+A conversion at runtime fails because the constants are defined as literals
+in a header file and thus don't exist anymore at runtime.
+Thus we redefine the constants.
+@$@<coreConstants@>==@{
+type CallConv uint;
+const (
+  CCallConv           = 0;
+  FastCallConv        = 8;
+  ColdCallConv        = 9;
+  X86StdcallCallConv  = 64;
+  X86FastcallCallConv = 65;
+)
+
+
+type IntPredicate int;
+const (
+  IntEQ = 32 + iota; /**< equal */
+  IntNE;      /**< not equal */
+  IntUGT;     /**< unsigned greater than */
+  IntUGE;     /**< unsigned greater or equal */
+  IntULT;     /**< unsigned less than */
+  IntULE;     /**< unsigned less or equal */
+  IntSGT;     /**< signed greater than */
+  IntSGE;     /**< signed greater or equal */
+  IntSLT;     /**< signed less than */
+  IntSLE;     /**< signed less or equal */
+)
+@}
+
+
+@D A LLVM context simply exists for thread safety.
+It allows parallel compilation of independent LLVM modules.
+
+We will just work with the global LLVM context for a long time.
+@$@<Operations on contexts@>==@{
+type Context C.LLVMContextRef;
+
+@<ContextCreate@>
+@<GetGlobalContext@>
+@}
+
+@E
+@$@<ContextCreate@>==@{
+func ContextCreate() Context {
+  return Context(C.LLVMContextCreate());
+}
+@}
+
+@E
+@$@<GetGlobalContext@>==@{
+func GetGlobalContext() Context {
+  return Context(C.LLVMGetGlobalContext());
+}
+@}
+
+
+@D LLVM modules correspond nicely to diamonds packages and contain mainly
+a symbol table and a list of functions.
+@$@<Operations on modules@>==@{
+type Module C.LLVMModuleRef;
+
+@<ModuleCreateWithName@>
+@<ModuleCreateWithNameInContext@>
+@<DisposeModule@>
+@<DumpModule@>
+@}
+
+@E Create a LLVM module with the given name and the global LLVM context.
+@$@<ModuleCreateWithName@>==@{
+func ModuleCreateWithName(moduleId string) Module {
+    var mod C.LLVMModuleRef;
+    callWithString(func(s *C.char){ mod = C.LLVMModuleCreateWithName(s); },
+                   moduleId);
+    return Module(mod);
+}
+@}
+
+@E Create a LLVM module with the given name and LLVM context.
+@$@<ModuleCreateWithNameInContext@>==@{
+func ModuleCreateWithNameInContext(moduleId string, llvmCtx Context)
+       Module {
+    var mod C.LLVMModuleRef;
+    callWithString(func(s *C.char){
+        mod = C.LLVMModuleCreateWithNameInContext(s, C.LLVMContextRef(llvmCtx));
+    }, moduleId);
+    return Module(mod);
+}
+@}
+
+@E Deletes the given LLVM module and frees the memory used by it.
+@$@<DisposeModule@>==@{
+func DisposeModule(llvmModule Module) {
+  C.LLVMDisposeModule(C.LLVMModuleRef(llvmModule));
+}
+@}
+
+@E Deletes the given LLVM module and frees the memory used by it.
+@$@<DumpModule@>==@{
+func DumpModule(llvmModule Module) {
+  C.LLVMDumpModule(C.LLVMModuleRef(llvmModule));
+}
+@}
+
+
+@D LLVM supports arbitrary integer types.
+They can range from 1 bit up to any number of bits.
+The compiler doesn't support the whole flexibility and we
+don't want to make use of it.
+
+1 Bit integers are used as booleans by LLVM.
+We support only 64 bit integers first but plan to introduce
+8, 16, 24, 32 and 48 bit integers later.
+@$@<Operations on integer types@>==@{
+@}
+
