@@ -7,10 +7,11 @@ LLVM C binding.
 The header files for the C binding can be found at:
 @{/usr/include/llvm-c/@}
 
+We have a simple C example for a start: ~/work/llvm/*.c
+
+
 @/Please Note:@/ The wrapper functions have the same name as the C binding
 functions except we leave the 'LLVM' prefix out since go supports packages.
-
-We have a simple C example for a start: ~/work/llvm/*.c
 
 
 The file @{llvm.go@} contains the wrapper functions for accessing the
@@ -46,6 +47,7 @@ import "os"
 @}
 
 
+@C
 The file @{llvm_test.go@} contains tests for the LLVM interface.
 @O@<llvm/llvm_test.go@>==@{@-
 package llvm
@@ -88,25 +90,27 @@ func dirtyTestFunc(num int) {
   InitializeNativeTarget();
   llvmMod := ModuleCreateWithNameInContext("tstMod", GetGlobalContext());
 
-  fac_args := [...]C.LLVMTypeRef{ C.LLVMInt32Type() };
-  pStr := C.CString("fac");
-  var fac C.LLVMValueRef = C.LLVMAddFunction(C.LLVMModuleRef(llvmMod), pStr,
-            C.LLVMFunctionType(C.LLVMInt32Type(), &fac_args[0], 1, 0));
-  C.free(unsafe.Pointer(pStr));
-  C.LLVMSetFunctionCallConv(fac, C.uint(CCallConv));
-  var n C.LLVMValueRef = C.LLVMGetParam(fac, 0);
+  fac_args := []Type{ Int32Type() };
+  fac  := AddFunction(llvmMod, "fac",
+                      FunctionType(Int32Type(), fac_args, false));
+  C.LLVMSetFunctionCallConv(C.LLVMTypeRef(fac), C.uint(CCallConv));
+  var n C.LLVMValueRef = C.LLVMGetParam(C.LLVMTypeRef(fac), 0);
 
-  pStr = C.CString("entry");
-  var entry C.LLVMBasicBlockRef = C.LLVMAppendBasicBlock(fac, pStr);
+  pStr := C.CString("entry");
+  var entry C.LLVMBasicBlockRef = C.LLVMAppendBasicBlock(C.LLVMTypeRef(fac),
+                                     pStr);
   C.free(unsafe.Pointer(pStr));
   pStr = C.CString("iftrue");
-  var iftrue C.LLVMBasicBlockRef = C.LLVMAppendBasicBlock(fac, pStr);
+  var iftrue C.LLVMBasicBlockRef = C.LLVMAppendBasicBlock(C.LLVMTypeRef(fac),
+                                      pStr);
   C.free(unsafe.Pointer(pStr));
   pStr = C.CString("iffalse");
-  var iffalse C.LLVMBasicBlockRef = C.LLVMAppendBasicBlock(fac, pStr);
+  var iffalse C.LLVMBasicBlockRef = C.LLVMAppendBasicBlock(C.LLVMTypeRef(fac),
+                                      pStr);
   C.free(unsafe.Pointer(pStr));
   pStr = C.CString("end");
-  var end C.LLVMBasicBlockRef = C.LLVMAppendBasicBlock(fac, pStr);
+  var end C.LLVMBasicBlockRef = C.LLVMAppendBasicBlock(C.LLVMTypeRef(fac),
+                                      pStr);
   C.free(unsafe.Pointer(pStr));
   var builder C.LLVMBuilderRef = C.LLVMCreateBuilder();
 
@@ -129,7 +133,7 @@ func dirtyTestFunc(num int) {
   C.free(unsafe.Pointer(pStr));
   call_fac_args := [...]C.LLVMValueRef{ n_minus };
   pStr = C.CString("fac(n - 1)");
-  var call_fac C.LLVMValueRef = C.LLVMBuildCall(builder, fac,
+  var call_fac C.LLVMValueRef = C.LLVMBuildCall(builder, C.LLVMTypeRef(fac),
                    &call_fac_args[0], 1, pStr);
   C.free(unsafe.Pointer(pStr));
   pStr = C.CString("n * fac(n - 1)");
@@ -182,8 +186,8 @@ func dirtyTestFunc(num int) {
   fmt.Printf("Running fac(%d) with JIT...\n", num);
   exec_args := [...]C.LLVMGenericValueRef{ C.LLVMCreateGenericValueOfInt(
                         C.LLVMInt32Type(), C.ulonglong(num), 0) };
-  var exec_res C.LLVMGenericValueRef =
-                   C.LLVMRunFunction(engine, fac, 1, &exec_args[0]);
+  var exec_res C.LLVMGenericValueRef = C.LLVMRunFunction(engine,
+                                         C.LLVMTypeRef(fac), 1, &exec_args[0]);
   fmt.Println("Result:", C.LLVMGenericValueToInt(exec_res, 0));
 
   C.LLVMDisposeExecutionEngine(engine);

@@ -4,7 +4,7 @@ to the header file @{llvm-c/Analysis.h@} of the LLVM C binding.
 @<analysisConstants@>
 @}
 
-@C The usage of the C constants is really awkward because they are
+@D The usage of the C constants is really awkward because they are
 stongly typed signed integers and we need strongly typed unsigned integers.
 A conversion at runtime fails because the constants are defined as literals
 in a header file and thus don't exist anymore at runtime.

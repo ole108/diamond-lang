@@ -1,13 +1,18 @@
 @C The @{core@} macro contains wrapper functions corresponding
 to the header file @{llvm-c/Core.h@} of the LLVM C binding.
 @$@<core@>==@{
+type Type C.LLVMTypeRef;
+type Value C.LLVMValueRef;
+
 @<coreConstants@>
 @<Operations on contexts@>
 @<Operations on modules@>
 @<Operations on integer types@>
+@<Operations on function types@>
+@<Operations on functions@>
 @}
 
-@C The usage of the C constants is really awkward because they are
+@D The usage of the C constants is really awkward because they are
 stongly typed signed integers and we need strongly typed unsigned integers.
 A conversion at runtime fails because the constants are defined as literals
 in a header file and thus don't exist anymore at runtime.
@@ -105,7 +110,8 @@ func DisposeModule(llvmModule Module) {
 }
 @}
 
-@E Deletes the given LLVM module and frees the memory used by it.
+@E Print the given module in LLVM assembly language to standard output.
+This is especially nice for debugging problems.
 @$@<DumpModule@>==@{
 func DumpModule(llvmModule Module) {
   C.LLVMDumpModule(C.LLVMModuleRef(llvmModule));
@@ -122,5 +128,116 @@ don't want to make use of it.
 We support only 64 bit integers first but plan to introduce
 8, 16, 24, 32 and 48 bit integers later.
 @$@<Operations on integer types@>==@{
+func Int1TypeInContext(ctx Context) Type {
+    return Type(C.LLVMInt1TypeInContext(C.LLVMContextRef(ctx)));
+}
+
+func Int8TypeInContext(ctx Context) Type {
+    return Type(C.LLVMInt8TypeInContext(C.LLVMContextRef(ctx)));
+}
+
+func Int16TypeInContext(ctx Context) Type {
+    return Type(C.LLVMInt16TypeInContext(C.LLVMContextRef(ctx)));
+}
+
+func Int32TypeInContext(ctx Context) Type {
+    return Type(C.LLVMInt32TypeInContext(C.LLVMContextRef(ctx)));
+}
+
+func Int64TypeInContext(ctx Context) Type {
+    return Type(C.LLVMInt64TypeInContext(C.LLVMContextRef(ctx)));
+}
+
+func IntTypeInContext(ctx Context, numBits uint) Type {
+    return Type(C.LLVMIntTypeInContext(C.LLVMContextRef(ctx),
+                                       C.unsigned(numBits)));
+}
+
+
+func Int1Type() Type {
+    return Type(C.LLVMInt1Type());
+}
+
+func Int8Type() Type {
+    return Type(C.LLVMInt8Type());
+}
+
+func Int16Type() Type {
+    return Type(C.LLVMInt16Type());
+}
+
+func Int32Type() Type {
+    return Type(C.LLVMInt32Type());
+}
+
+func Int64Type() Type {
+    return Type(C.LLVMInt64Type());
+}
+
+func IntType(numBits uint) Type {
+    return Type(C.LLVMIntType(C.unsigned(numBits)));
+}
+
+
+func GetIntTypeWidth(intType Type) uint {
+    return uint(C.LLVMGetIntTypeWidth(C.LLVMTypeRef(intType)));
+}
 @}
 
+
+@D LLVM supports function types.
+So functions can be first class types.
+@$@<Operations on function types@>==@{
+func FunctionType(returnType Type, paramTypes []Type, isVarArg bool) Type {
+    paramCnt := len(paramTypes);
+    params := make([]C.LLVMTypeRef, paramCnt);
+    for i:=0; i < paramCnt; i++ {
+        params[i] = C.LLVMTypeRef(paramTypes[i]);
+    }
+    isvarg := 0;
+    if isVarArg { isvarg = 1; }
+    return Type(C.LLVMFunctionType(C.LLVMTypeRef(returnType),
+                                   &params[0], C.unsigned(paramCnt),
+                                   C.int(isvarg)));
+}
+
+func IsFunctionVarArg(functionType Type) bool {
+    return int(C.LLVMIsFunctionVarArg(C.LLVMTypeRef(functionType))) != 0;
+}
+
+func GetReturnType(functionType Type) Type {
+    return Type(C.LLVMGetReturnType(C.LLVMTypeRef(functionType)));
+}
+
+func CountParamTypes(functionType Type) uint {
+    return uint(C.LLVMCountParamTypes(C.LLVMTypeRef(functionType)));
+}
+@}
+
+
+@D LLVM supports function types.
+So functions can be first class types.
+@$@<Operations on functions@>==@{
+func AddFunction(mod Module, funcName string, functionType Type) Value {
+    var ret Value;
+    callWithString(func(s *C.char){
+        ret = Value(C.LLVMAddFunction(C.LLVMModuleRef(mod), s,
+                                C.LLVMTypeRef(functionType)));
+    }, funcName);
+    return ret;
+}
+
+/*
+LLVMValueRef LLVMGetNamedFunction(LLVMModuleRef M, const char *Name);
+LLVMValueRef LLVMGetFirstFunction(LLVMModuleRef M);
+LLVMValueRef LLVMGetLastFunction(LLVMModuleRef M);
+LLVMValueRef LLVMGetNextFunction(LLVMValueRef Fn);
+LLVMValueRef LLVMGetPreviousFunction(LLVMValueRef Fn);
+void LLVMDeleteFunction(LLVMValueRef Fn);
+unsigned LLVMGetIntrinsicID(LLVMValueRef Fn);
+unsigned LLVMGetFunctionCallConv(LLVMValueRef Fn);
+void LLVMSetFunctionCallConv(LLVMValueRef Fn, unsigned CC);
+const char *LLVMGetGC(LLVMValueRef Fn);
+void LLVMSetGC(LLVMValueRef Fn, const char *Name);
+*/
+@}
