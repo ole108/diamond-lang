@@ -93,8 +93,8 @@ func dirtyTestFunc(num int) {
   fac_args := []Type{ Int32Type() };
   fac  := AddFunction(llvmMod, "fac",
                       FunctionType(Int32Type(), fac_args, false));
-  C.LLVMSetFunctionCallConv(C.LLVMTypeRef(fac), C.uint(CCallConv));
-  var n C.LLVMValueRef = C.LLVMGetParam(C.LLVMTypeRef(fac), 0);
+  SetFunctionCallConv(fac, CCallConv);
+  n := GetParam(fac, 0);
 
   pStr := C.CString("entry");
   var entry C.LLVMBasicBlockRef = C.LLVMAppendBasicBlock(C.LLVMTypeRef(fac),
@@ -117,7 +117,7 @@ func dirtyTestFunc(num int) {
   C.LLVMPositionBuilderAtEnd(builder, entry);
   pStr = C.CString("n == 0");
   var If C.LLVMValueRef = C.LLVMBuildICmp(builder,
-             C.LLVMIntPredicate(IntEQ), n,
+             C.LLVMIntPredicate(IntEQ), C.LLVMValueRef(n),
              C.LLVMConstInt(C.LLVMInt32Type(), 0, 0), pStr);
   C.free(unsafe.Pointer(pStr));
   C.LLVMBuildCondBr(builder, If, iftrue, iffalse);
@@ -128,7 +128,7 @@ func dirtyTestFunc(num int) {
 
   C.LLVMPositionBuilderAtEnd(builder, iffalse);
   pStr = C.CString("n - 1");
-  var n_minus C.LLVMValueRef = C.LLVMBuildSub(builder, n,
+  var n_minus C.LLVMValueRef = C.LLVMBuildSub(builder, C.LLVMValueRef(n),
                   C.LLVMConstInt(C.LLVMInt32Type(), 1, 0), pStr);
   C.free(unsafe.Pointer(pStr));
   call_fac_args := [...]C.LLVMValueRef{ n_minus };
@@ -137,7 +137,8 @@ func dirtyTestFunc(num int) {
                    &call_fac_args[0], 1, pStr);
   C.free(unsafe.Pointer(pStr));
   pStr = C.CString("n * fac(n - 1)");
-  var res_iffalse C.LLVMValueRef = C.LLVMBuildMul(builder, n, call_fac, pStr);
+  var res_iffalse C.LLVMValueRef = C.LLVMBuildMul(builder, C.LLVMValueRef(n),
+                                                  call_fac, pStr);
   C.free(unsafe.Pointer(pStr));
   C.LLVMBuildBr(builder, end);
 

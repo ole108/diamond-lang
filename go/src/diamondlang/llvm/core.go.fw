@@ -10,6 +10,7 @@ type Value C.LLVMValueRef;
 @<Operations on integer types@>
 @<Operations on function types@>
 @<Operations on functions@>
+@<Operations on parameters@>
 @}
 
 @D The usage of the C constants is really awkward because they are
@@ -227,17 +228,101 @@ func AddFunction(mod Module, funcName string, functionType Type) Value {
     return ret;
 }
 
-/*
-LLVMValueRef LLVMGetNamedFunction(LLVMModuleRef M, const char *Name);
-LLVMValueRef LLVMGetFirstFunction(LLVMModuleRef M);
-LLVMValueRef LLVMGetLastFunction(LLVMModuleRef M);
-LLVMValueRef LLVMGetNextFunction(LLVMValueRef Fn);
-LLVMValueRef LLVMGetPreviousFunction(LLVMValueRef Fn);
-void LLVMDeleteFunction(LLVMValueRef Fn);
-unsigned LLVMGetIntrinsicID(LLVMValueRef Fn);
-unsigned LLVMGetFunctionCallConv(LLVMValueRef Fn);
-void LLVMSetFunctionCallConv(LLVMValueRef Fn, unsigned CC);
-const char *LLVMGetGC(LLVMValueRef Fn);
-void LLVMSetGC(LLVMValueRef Fn, const char *Name);
-*/
+func GetNamedFunction(mod Module, funcName string) Value {
+    var ret Value;
+    callWithString(func(s *C.char){
+        ret = Value(C.LLVMGetNamedFunction(C.LLVMModuleRef(mod), s));
+    }, funcName);
+    return ret;
+}
+
+func GetFirstFunction(mod Module) Value {
+    return Value(C.LLVMGetFirstFunction(C.LLVMModuleRef(mod)));
+}
+
+func GetLastFunction(mod Module) Value {
+    return Value(C.LLVMGetLastFunction(C.LLVMModuleRef(mod)));
+}
+
+func GetNextFunction(fun Value) Value {
+    return Value(C.LLVMGetNextFunction(C.LLVMValueRef(fun)));
+}
+
+func GetPreviousFunction(fun Value) Value {
+    return Value(C.LLVMGetPreviousFunction(C.LLVMValueRef(fun)));
+}
+
+func DeleteFunction(fun Value) {
+    C.LLVMDeleteFunction(C.LLVMValueRef(fun));
+}
+
+func GetIntrinsicID(fun Value) uint {
+    return uint(C.LLVMGetIntrinsicID(C.LLVMValueRef(fun)));
+}
+
+func GetFunctionCallConv(fun Value) CallConv {
+    return CallConv(C.LLVMGetFunctionCallConv(C.LLVMValueRef(fun)));
+}
+
+func SetFunctionCallConv(fun Value, callConv CallConv) {
+    C.LLVMSetFunctionCallConv(C.LLVMValueRef(fun), C.unsigned(callConv));
+}
+
+func GetGC(fun Value) string {
+    return C.GoString(C.LLVMGetGC(C.LLVMValueRef(fun)));
+}
+
+func SetGC(fun Value, gcName string) {
+    callWithString(func(s *C.char){
+        C.LLVMSetGC(C.LLVMValueRef(fun), s);
+    }, gcName);
+}
 @}
+
+
+@D LLVM operations on function parameters.
+@$@<Operations on parameters@>==@{
+func CountParams(fun Value) uint {
+    return uint(C.LLVMCountParams(C.LLVMValueRef(fun)));
+}
+
+
+func GetParams(fun Value) []Value {
+    tmp := make([]C.LLVMValueRef, CountParams(fun));
+    C.LLVMGetParams(C.LLVMValueRef(fun), &tmp[0]);
+    ret := make([]Value, len(tmp));
+    for i := 0; i < len(tmp); i++ {
+        ret[i] = Value(tmp[i]);
+    }
+    return ret;
+}
+
+func GetParam(fun Value, idx uint) Value {
+    return Value(C.LLVMGetParam(C.LLVMValueRef(fun), C.unsigned(idx)));
+}
+
+func GetParamParent(inst Value) Value {
+    return Value(C.LLVMGetParamParent(C.LLVMValueRef(inst)));
+}
+
+func GetFirstParam(fun Value) Value {
+    return Value(C.LLVMGetFirstParam(C.LLVMValueRef(fun)));
+}
+
+func GetLastParam(fun Value) Value {
+    return Value(C.LLVMGetLastParam(C.LLVMValueRef(fun)));
+}
+
+func GetNextParam(arg Value) Value {
+    return Value(C.LLVMGetNextParam(C.LLVMValueRef(arg)));
+}
+
+func GetPreviousParam(arg Value) Value {
+    return Value(C.LLVMGetPreviousParam(C.LLVMValueRef(arg)));
+}
+
+func SetParamAlignment(arg Value, align uint) {
+    C.LLVMSetParamAlignment(C.LLVMValueRef(arg), C.unsigned(align));
+}
+@}
+
