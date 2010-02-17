@@ -1,10 +1,10 @@
 @C The @{core@} macro contains wrapper functions corresponding
 to the header file @{llvm-c/Core.h@} of the LLVM C binding.
 @$@<core@>==@{
-type Type       C.LLVMTypeRef;
-type Value      C.LLVMValueRef;
-type BasicBlock C.LLVMBasicBlockRef;
-type Builder    C.LLVMBuilderRef;
+type Type         C.LLVMTypeRef;
+type Value        C.LLVMValueRef;
+type BasicBlock   C.LLVMBasicBlockRef;
+type Builder      C.LLVMBuilderRef;
 
 @<coreConstants@>
 @<Operations on contexts@>
@@ -15,6 +15,7 @@ type Builder    C.LLVMBuilderRef;
 @<Operations on parameters@>
 @<Operations on basic blocks@>
 @<Operations on instruction builders@>
+@<Operations on values@>
 @}
 
 @D The usage of the C constants is really awkward because they are
@@ -436,6 +437,8 @@ An instruction builder represents a point within a basic block, and is the
 exclusive means of building instructions.
 @$@<Operations on instruction builders@>==@{
 @<Basic operations on instruction builders@>
+@<Build comparison instructions@>
+@<Build terminators@>
 @}
 
 
@@ -445,17 +448,119 @@ func CreateBuilder() Builder {
     return Builder(C.LLVMCreateBuilder());
 }
 
+func CreateBuilderInContext(ctx Context) Builder {
+    return Builder(C.LLVMCreateBuilderInContext(C.LLVMContextRef(ctx)));
+}
+
+func PositionBuilder(builder Builder, basicBlock BasicBlock, instr Value) {
+    C.LLVMPositionBuilder(C.LLVMBuilderRef(builder),
+                          C.LLVMBasicBlockRef(basicBlock),
+                          C.LLVMValueRef(instr));
+}
+
+func PositionBuilderBefore(builder Builder, instr Value) {
+    C.LLVMPositionBuilderBefore(C.LLVMBuilderRef(builder),
+                                C.LLVMValueRef(instr));
+}
+
+func PositionBuilderAtEnd(builder Builder, basicBlock BasicBlock) {
+    C.LLVMPositionBuilderAtEnd(C.LLVMBuilderRef(builder),
+                               C.LLVMBasicBlockRef(basicBlock));
+}
+
+func GetInsertBlock(builder Builder) BasicBlock {
+    return BasicBlock(C.LLVMGetInsertBlock(C.LLVMBuilderRef(builder)));
+}
+
+func ClearInsertionPosition(builder Builder) {
+    C.LLVMClearInsertionPosition(C.LLVMBuilderRef(builder));
+}
+
+func InsertIntoBuilder(builder Builder, instr Value) {
+    C.LLVMInsertIntoBuilder(C.LLVMBuilderRef(builder),
+                            C.LLVMValueRef(instr));
+}
+
+func InsertIntoBuilderWithName(builder Builder, instr Value, instrName string) {
+    callWithString(func(s *C.char){
+        C.LLVMInsertIntoBuilderWithName(C.LLVMBuilderRef(builder),
+                                        C.LLVMValueRef(instr), s);
+    }, instrName);
+}
+
+func DisposeBuilder(builder Builder) {
+    C.LLVMDisposeBuilder(C.LLVMBuilderRef(builder));
+}
+@}
+
+
+@E Functions that build comparison instructions.
+@$@<Build comparison instructions@>==@{
+func BuildICmp(builder Builder, op IntPredicate, lhs Value, rhs Value,
+               instrName string) Value {
+    var ret Value;
+    callWithString(func(s *C.char){
+        ret = Value(C.LLVMBuildICmp(C.LLVMBuilderRef(builder),
+                                    C.LLVMIntPredicate(op),
+                                    C.LLVMValueRef(lhs),
+                                    C.LLVMValueRef(rhs),
+                                    s));
+    }, instrName);
+    return ret;
+}
+@}
+
+@E Functions that build comparison instructions.
+@$@<Build terminators@>==@{
+func BuildBr(builder Builder, destBlock BasicBlock) Value {
+    return Value(C.LLVMBuildBr(C.LLVMBuilderRef(builder),
+                               C.LLVMBasicBlockRef(destBlock)));
+}
+
 /*
-LLVMBuilderRef LLVMCreateBuilderInContext(LLVMContextRef C);
-void LLVMPositionBuilder(LLVMBuilderRef Builder, LLVMBasicBlockRef Block,
-                         LLVMValueRef Instr);
-void LLVMPositionBuilderBefore(LLVMBuilderRef Builder, LLVMValueRef Instr);
-void LLVMPositionBuilderAtEnd(LLVMBuilderRef Builder, LLVMBasicBlockRef Block);
-LLVMBasicBlockRef LLVMGetInsertBlock(LLVMBuilderRef Builder);
-void LLVMClearInsertionPosition(LLVMBuilderRef Builder);
-void LLVMInsertIntoBuilder(LLVMBuilderRef Builder, LLVMValueRef Instr);
-void LLVMInsertIntoBuilderWithName(LLVMBuilderRef Builder, LLVMValueRef Instr,
-                                   const char *Name);
-void LLVMDisposeBuilder(LLVMBuilderRef Builder);
+LLVMValueRef LLVMBuildBr(LLVMBuilderRef, LLVMBasicBlockRef Dest);
+LLVMValueRef LLVMBuildRetVoid(LLVMBuilderRef);
+LLVMValueRef LLVMBuildRet(LLVMBuilderRef, LLVMValueRef V);
+LLVMValueRef LLVMBuildAggregateRet(LLVMBuilderRef, LLVMValueRef *RetVals,
+                                   unsigned N);
+LLVMValueRef LLVMBuildCondBr(LLVMBuilderRef, LLVMValueRef If,
+                             LLVMBasicBlockRef Then, LLVMBasicBlockRef Else);
+LLVMValueRef LLVMBuildSwitch(LLVMBuilderRef, LLVMValueRef V,
+                             LLVMBasicBlockRef Else, unsigned NumCases);
+LLVMValueRef LLVMBuildInvoke(LLVMBuilderRef, LLVMValueRef Fn,
+                             LLVMValueRef *Args, unsigned NumArgs,
+                             LLVMBasicBlockRef Then, LLVMBasicBlockRef Catch,
+                             const char *Name);
+LLVMValueRef LLVMBuildUnwind(LLVMBuilderRef);
+LLVMValueRef LLVMBuildUnreachable(LLVMBuilderRef);
 */
+@}
+
+
+
+@D Operations on LLVM values.
+The bulk of LLVM's object model consists of values, which comprise a very
+rich type hierarchy.
+@$@<Operations on values@>==@{
+@<Operations on scalar constants@>
+@}
+
+@E Operations on LLVM scalar constants.
+@$@<Operations on scalar constants@>==@{
+func ConstInt(intType Type, val uint64, signed bool) Value {
+    signExtend := 0;
+    if signed { signExtend = 1; }
+    return Value(C.LLVMConstInt(C.LLVMTypeRef(intType), C.ulonglong(val),
+                                C.int(signExtend)));
+}
+
+func ConstIntOfString(intType Type, val string, radix uint8) Value {
+    var ret Value;
+    callWithString(func(s *C.char){
+        ret = Value(C.LLVMConstIntOfStringAndSize(C.LLVMTypeRef(intType),
+                                                  s, C.unsigned(len(val)),
+                                                  C.uint8_t(radix)));
+    }, val);
+    return ret;
+}
 @}

@@ -102,27 +102,22 @@ func dirtyTestFunc(num int) {
   end     := AppendBasicBlock(fac, "end");
   builder := CreateBuilder();
 
-  C.LLVMPositionBuilderAtEnd(C.LLVMBuilderRef(builder),
-                             C.LLVMBasicBlockRef(entry));
-  pStr := C.CString("n == 0");
-  var If C.LLVMValueRef = C.LLVMBuildICmp(C.LLVMBuilderRef(builder),
-             C.LLVMIntPredicate(IntEQ), C.LLVMValueRef(n),
-             C.LLVMConstInt(C.LLVMInt32Type(), 0, 0), pStr);
-  C.free(unsafe.Pointer(pStr));
-  C.LLVMBuildCondBr(C.LLVMBuilderRef(builder), If, C.LLVMBasicBlockRef(iftrue),
+  PositionBuilderAtEnd(builder, entry);
+  if_instr := BuildICmp(builder, IntEQ, n, ConstInt(Int32Type(), 0, false),
+                        "n == 0");
+  C.LLVMBuildCondBr(C.LLVMBuilderRef(builder), C.LLVMValueRef(if_instr),
+                    C.LLVMBasicBlockRef(iftrue),
                                  C.LLVMBasicBlockRef(iffalse));
 
-  C.LLVMPositionBuilderAtEnd(C.LLVMBuilderRef(builder),
-                             C.LLVMBasicBlockRef(iftrue));
-  var res_iftrue C.LLVMValueRef = C.LLVMConstInt(C.LLVMInt32Type(), 1, 0);
-  C.LLVMBuildBr(C.LLVMBuilderRef(builder), C.LLVMBasicBlockRef(end));
+  PositionBuilderAtEnd(builder, iftrue);
+  res_iftrue := ConstInt(Int32Type(), 1, false);
+  BuildBr(builder, end);
 
-  C.LLVMPositionBuilderAtEnd(C.LLVMBuilderRef(builder),
-                             C.LLVMBasicBlockRef(iffalse));
-  pStr = C.CString("n - 1");
+  PositionBuilderAtEnd(builder, iffalse);
+  pStr := C.CString("n - 1");
   var n_minus C.LLVMValueRef = C.LLVMBuildSub(C.LLVMBuilderRef(builder),
                                               C.LLVMValueRef(n),
-                  C.LLVMConstInt(C.LLVMInt32Type(), 1, 0), pStr);
+                  C.LLVMValueRef(ConstInt(Int32Type(), 1, false)), pStr);
   C.free(unsafe.Pointer(pStr));
   call_fac_args := [...]C.LLVMValueRef{ n_minus };
   pStr = C.CString("fac(n - 1)");
@@ -135,15 +130,14 @@ func dirtyTestFunc(num int) {
                                                   C.LLVMValueRef(n),
                                                   call_fac, pStr);
   C.free(unsafe.Pointer(pStr));
-  C.LLVMBuildBr(C.LLVMBuilderRef(builder), C.LLVMBasicBlockRef(end));
+  BuildBr(builder, end);
 
-  C.LLVMPositionBuilderAtEnd(C.LLVMBuilderRef(builder),
-                             C.LLVMBasicBlockRef(end));
+  PositionBuilderAtEnd(builder, end);
   pStr = C.CString("result");
   var res C.LLVMValueRef = C.LLVMBuildPhi(C.LLVMBuilderRef(builder),
                                           C.LLVMInt32Type(), pStr);
   C.free(unsafe.Pointer(pStr));
-  phi_vals := [...]C.LLVMValueRef{ res_iftrue, res_iffalse };
+  phi_vals := [...]C.LLVMValueRef{ C.LLVMValueRef(res_iftrue), res_iffalse };
   phi_blocks := [...]C.LLVMBasicBlockRef{ C.LLVMBasicBlockRef(iftrue),
                                           C.LLVMBasicBlockRef(iffalse) };
   C.LLVMAddIncoming(res, &phi_vals[0], &phi_blocks[0], 2);
@@ -190,7 +184,7 @@ func dirtyTestFunc(num int) {
   fmt.Println("Result:", C.LLVMGenericValueToInt(exec_res, 0));
 
   C.LLVMDisposeExecutionEngine(engine);
-  C.LLVMDisposeBuilder(C.LLVMBuilderRef(builder));
+  DisposeBuilder(builder);
   C.LLVMDisposePassManager(pass);
 //DisposeModule(llvmMod);  // Throws assertion!!! :-(((
 
