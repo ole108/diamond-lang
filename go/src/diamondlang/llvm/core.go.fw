@@ -439,6 +439,7 @@ exclusive means of building instructions.
 @<Basic operations on instruction builders@>
 @<Build comparison instructions@>
 @<Build terminators@>
+@<Build arithmetic operations@>
 @}
 
 
@@ -510,33 +511,118 @@ func BuildICmp(builder Builder, op IntPredicate, lhs Value, rhs Value,
 }
 @}
 
-@E Functions that build comparison instructions.
+@E Functions that build block terminators.
 @$@<Build terminators@>==@{
 func BuildBr(builder Builder, destBlock BasicBlock) Value {
     return Value(C.LLVMBuildBr(C.LLVMBuilderRef(builder),
                                C.LLVMBasicBlockRef(destBlock)));
 }
 
-/*
-LLVMValueRef LLVMBuildBr(LLVMBuilderRef, LLVMBasicBlockRef Dest);
-LLVMValueRef LLVMBuildRetVoid(LLVMBuilderRef);
-LLVMValueRef LLVMBuildRet(LLVMBuilderRef, LLVMValueRef V);
-LLVMValueRef LLVMBuildAggregateRet(LLVMBuilderRef, LLVMValueRef *RetVals,
-                                   unsigned N);
-LLVMValueRef LLVMBuildCondBr(LLVMBuilderRef, LLVMValueRef If,
-                             LLVMBasicBlockRef Then, LLVMBasicBlockRef Else);
-LLVMValueRef LLVMBuildSwitch(LLVMBuilderRef, LLVMValueRef V,
-                             LLVMBasicBlockRef Else, unsigned NumCases);
-LLVMValueRef LLVMBuildInvoke(LLVMBuilderRef, LLVMValueRef Fn,
-                             LLVMValueRef *Args, unsigned NumArgs,
-                             LLVMBasicBlockRef Then, LLVMBasicBlockRef Catch,
-                             const char *Name);
-LLVMValueRef LLVMBuildUnwind(LLVMBuilderRef);
-LLVMValueRef LLVMBuildUnreachable(LLVMBuilderRef);
-*/
+func BuildRetVoid(builder Builder) Value {
+    return Value(C.LLVMBuildRetVoid(C.LLVMBuilderRef(builder)));
+}
+
+func BuildRet(builder Builder, ret Value) Value {
+    return Value(C.LLVMBuildRet(C.LLVMBuilderRef(builder),
+                                C.LLVMValueRef(ret)));
+}
+
+func BuildAggregateRet(builder Builder, rets []Value) Value {
+    tmp := make([]C.LLVMValueRef, len(rets));
+    for i := 0; i < len(tmp); i++ {
+        tmp[i] = C.LLVMValueRef(rets[i]);
+    }
+    return Value(C.LLVMBuildAggregateRet(C.LLVMBuilderRef(builder),
+                                &tmp[0], C.unsigned(len(rets)) ));
+}
+
+func BuildCondBr(builder Builder, ifCond Value, thenBlock BasicBlock,
+                 elseBlock BasicBlock) Value {
+    return Value(C.LLVMBuildCondBr(C.LLVMBuilderRef(builder),
+                                   C.LLVMValueRef(ifCond),
+                                   C.LLVMBasicBlockRef(thenBlock),
+                                   C.LLVMBasicBlockRef(elseBlock)));
+}
+
+func BuildSwitch(builder Builder, val Value, elseBlock BasicBlock,
+                 numCases uint) Value {
+    return Value(C.LLVMBuildSwitch(C.LLVMBuilderRef(builder),
+                                   C.LLVMValueRef(val),
+                                   C.LLVMBasicBlockRef(elseBlock),
+                                   C.unsigned(numCases)));
+}
+
+func BuildInvoke(builder Builder, fun Value, args []Value,
+                 thenBlock BasicBlock, catchBlock BasicBlock,
+                 instrName string) Value {
+
+    tmp := make([]C.LLVMValueRef, len(args));
+    for i := 0; i < len(tmp); i++ {
+        tmp[i] = C.LLVMValueRef(args[i]);
+    }
+
+    var ret Value;
+    callWithString(func(s *C.char){
+        ret = Value(C.LLVMBuildInvoke(C.LLVMBuilderRef(builder),
+                                      C.LLVMValueRef(fun),
+                                      &tmp[0], C.unsigned(len(tmp)),
+                                      C.LLVMBasicBlockRef(thenBlock),
+                                      C.LLVMBasicBlockRef(catchBlock),
+                                      s));
+    }, instrName);
+    return ret;
+}
+
+func BuildUnwind(builder Builder) Value {
+    return Value(C.LLVMBuildUnwind(C.LLVMBuilderRef(builder)));
+}
+
+func BuildUnreachable(builder Builder) Value {
+    return Value(C.LLVMBuildUnreachable(C.LLVMBuilderRef(builder)));
+}
 @}
 
 
+@E Functions for building arithmetic operations.
+@$@<Build arithmetic operations@>==@{
+func BuildSub(builder Builder, lhs Value, rhs Value, instrName string) Value {
+    var ret Value;
+    callWithString(func(s *C.char){
+        ret = Value(C.LLVMBuildSub(C.LLVMBuilderRef(builder),
+                                   C.LLVMValueRef(lhs),
+                                   C.LLVMValueRef(rhs),
+                                   s));
+    }, instrName);
+    return ret;
+}
+
+/*
+LLVMValueRef LLVMBuildAdd(LLVMBuilderRef, LLVMValueRef LHS, LLVMValueRef RHS,
+                          const char *Name);
+LLVMValueRef LLVMBuildNSWAdd(LLVMBuilderRef, LLVMValueRef LHS, LLVMValueRef RHS,
+                             const char *Name);
+LLVMValueRef LLVMBuildMul(LLVMBuilderRef, LLVMValueRef LHS, LLVMValueRef RHS,
+                          const char *Name);
+LLVMValueRef LLVMBuildSDiv(LLVMBuilderRef, LLVMValueRef LHS, LLVMValueRef RHS,
+                           const char *Name);
+LLVMValueRef LLVMBuildExactSDiv(LLVMBuilderRef, LLVMValueRef LHS,
+                                LLVMValueRef RHS, const char *Name);
+LLVMValueRef LLVMBuildSRem(LLVMBuilderRef, LLVMValueRef LHS, LLVMValueRef RHS,
+                           const char *Name);
+LLVMValueRef LLVMBuildShl(LLVMBuilderRef, LLVMValueRef LHS, LLVMValueRef RHS,
+                           const char *Name);
+LLVMValueRef LLVMBuildLShr(LLVMBuilderRef, LLVMValueRef LHS, LLVMValueRef RHS,
+                           const char *Name);
+LLVMValueRef LLVMBuildAnd(LLVMBuilderRef, LLVMValueRef LHS, LLVMValueRef RHS,
+                          const char *Name);
+LLVMValueRef LLVMBuildOr(LLVMBuilderRef, LLVMValueRef LHS, LLVMValueRef RHS,
+                          const char *Name);
+LLVMValueRef LLVMBuildXor(LLVMBuilderRef, LLVMValueRef LHS, LLVMValueRef RHS,
+                          const char *Name);
+LLVMValueRef LLVMBuildNeg(LLVMBuilderRef, LLVMValueRef V, const char *Name);
+LLVMValueRef LLVMBuildNot(LLVMBuilderRef, LLVMValueRef V, const char *Name);
+*/
+@}
 
 @D Operations on LLVM values.
 The bulk of LLVM's object model consists of values, which comprise a very

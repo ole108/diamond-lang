@@ -114,13 +114,9 @@ func dirtyTestFunc(num int) {
   BuildBr(builder, end);
 
   PositionBuilderAtEnd(builder, iffalse);
-  pStr := C.CString("n - 1");
-  var n_minus C.LLVMValueRef = C.LLVMBuildSub(C.LLVMBuilderRef(builder),
-                                              C.LLVMValueRef(n),
-                  C.LLVMValueRef(ConstInt(Int32Type(), 1, false)), pStr);
-  C.free(unsafe.Pointer(pStr));
-  call_fac_args := [...]C.LLVMValueRef{ n_minus };
-  pStr = C.CString("fac(n - 1)");
+  n_minus := BuildSub(builder, n, ConstInt(Int32Type(), 1, false), "n - 1");
+  call_fac_args := [...]C.LLVMValueRef{ C.LLVMValueRef(n_minus) };
+  pStr := C.CString("fac(n - 1)");
   var call_fac C.LLVMValueRef = C.LLVMBuildCall(C.LLVMBuilderRef(builder),
                                                 C.LLVMTypeRef(fac),
                                                 &call_fac_args[0], 1, pStr);
