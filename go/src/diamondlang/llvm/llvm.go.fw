@@ -115,29 +115,19 @@ func dirtyTestFunc(num int) {
 
   PositionBuilderAtEnd(builder, iffalse);
   n_minus := BuildSub(builder, n, ConstInt(Int32Type(), 1, false), "n - 1");
-  call_fac_args := [...]C.LLVMValueRef{ C.LLVMValueRef(n_minus) };
-  pStr := C.CString("fac(n - 1)");
-  var call_fac C.LLVMValueRef = C.LLVMBuildCall(C.LLVMBuilderRef(builder),
-                                                C.LLVMTypeRef(fac),
-                                                &call_fac_args[0], 1, pStr);
-  C.free(unsafe.Pointer(pStr));
-  pStr = C.CString("n * fac(n - 1)");
-  var res_iffalse C.LLVMValueRef = C.LLVMBuildMul(C.LLVMBuilderRef(builder),
-                                                  C.LLVMValueRef(n),
-                                                  call_fac, pStr);
-  C.free(unsafe.Pointer(pStr));
+  call_fac_args := []Value{ n_minus };
+  call_fac := BuildCall(builder, fac, call_fac_args, "fac(n - 1)");
+  res_iffalse := BuildMul(builder, n, call_fac, "n * fac(n - 1)");
   BuildBr(builder, end);
 
   PositionBuilderAtEnd(builder, end);
-  pStr = C.CString("result");
-  var res C.LLVMValueRef = C.LLVMBuildPhi(C.LLVMBuilderRef(builder),
-                                          C.LLVMInt32Type(), pStr);
-  C.free(unsafe.Pointer(pStr));
-  phi_vals := [...]C.LLVMValueRef{ C.LLVMValueRef(res_iftrue), res_iffalse };
+  res := BuildPhi(builder, Int32Type(), "result");
+  phi_vals := [...]C.LLVMValueRef{ C.LLVMValueRef(res_iftrue),
+                                   C.LLVMValueRef(res_iffalse) };
   phi_blocks := [...]C.LLVMBasicBlockRef{ C.LLVMBasicBlockRef(iftrue),
                                           C.LLVMBasicBlockRef(iffalse) };
-  C.LLVMAddIncoming(res, &phi_vals[0], &phi_blocks[0], 2);
-  C.LLVMBuildRet(C.LLVMBuilderRef(builder), res);
+  C.LLVMAddIncoming(C.LLVMValueRef(res), &phi_vals[0], &phi_blocks[0], 2);
+  C.LLVMBuildRet(C.LLVMBuilderRef(builder), C.LLVMValueRef(res));
 
   var error *C.char = nil;
   C.LLVMVerifyModule(C.LLVMModuleRef(llvmMod),
