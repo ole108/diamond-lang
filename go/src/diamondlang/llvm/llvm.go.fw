@@ -122,35 +122,22 @@ func dirtyTestFunc(num int) {
 
   PositionBuilderAtEnd(builder, end);
   res := BuildPhi(builder, Int32Type(), "result");
-  phi_vals := [...]C.LLVMValueRef{ C.LLVMValueRef(res_iftrue),
-                                   C.LLVMValueRef(res_iffalse) };
-  phi_blocks := [...]C.LLVMBasicBlockRef{ C.LLVMBasicBlockRef(iftrue),
-                                          C.LLVMBasicBlockRef(iffalse) };
-  C.LLVMAddIncoming(C.LLVMValueRef(res), &phi_vals[0], &phi_blocks[0], 2);
-  C.LLVMBuildRet(C.LLVMBuilderRef(builder), C.LLVMValueRef(res));
+  phi_vals := []Value{ res_iftrue, res_iffalse };
+  phi_blocks := []BasicBlock{ iftrue, iffalse };
+  AddIncoming(res, phi_vals, phi_blocks);
+  BuildRet(builder, res);
 
-  var error *C.char = nil;
-  C.LLVMVerifyModule(C.LLVMModuleRef(llvmMod),
-                     C.LLVMVerifierFailureAction(AbortProcessAction),
-                     &error);
-  // Handler == LLVMAbortProcessAction -> No need to check errors:
-  C.LLVMDisposeMessage(error);
+  VerifyModule(llvmMod);
 
-  var engine C.LLVMExecutionEngineRef;
-  var provider C.LLVMModuleProviderRef =
-          C.LLVMCreateModuleProviderForExistingModule(C.LLVMModuleRef(llvmMod));
-  error = nil;
-  if C.LLVMCreateJITCompiler(&engine, provider, 2, &error) != 0 {
-    fmt.Fprintln(os.Stderr, C.GoString(error));
-    C.LLVMDisposeMessage(error);
-    os.Exit(1);
-  }
+  provider := CreateModuleProviderForExistingModule(llvmMod);
+  engine := CreateJITCompiler(provider, 2);
 
 //  DumpModule(llvmMod);
   // Optimizations:
   fmt.Println("\n\nOptimizing:");
   var pass C.LLVMPassManagerRef = C.LLVMCreatePassManager();
-  C.LLVMAddTargetData(C.LLVMGetExecutionEngineTargetData(engine), pass);
+  C.LLVMAddTargetData(C.LLVMGetExecutionEngineTargetData(
+        C.LLVMExecutionEngineRef(engine)), pass);
   C.LLVMAddConstantPropagationPass(pass);
   C.LLVMAddInstructionCombiningPass(pass);
   C.LLVMAddPromoteMemoryToRegisterPass(pass);
@@ -165,11 +152,12 @@ func dirtyTestFunc(num int) {
   fmt.Printf("Running fac(%d) with JIT...\n", num);
   exec_args := [...]C.LLVMGenericValueRef{ C.LLVMCreateGenericValueOfInt(
                         C.LLVMInt32Type(), C.ulonglong(num), 0) };
-  var exec_res C.LLVMGenericValueRef = C.LLVMRunFunction(engine,
-                                         C.LLVMTypeRef(fac), 1, &exec_args[0]);
+  var exec_res C.LLVMGenericValueRef = C.LLVMRunFunction(
+                                C.LLVMExecutionEngineRef(engine),
+                                C.LLVMValueRef(fac), 1, &exec_args[0]);
   fmt.Println("Result:", C.LLVMGenericValueToInt(exec_res, 0));
 
-  C.LLVMDisposeExecutionEngine(engine);
+  DisposeExecutionEngine(engine);
   DisposeBuilder(builder);
   C.LLVMDisposePassManager(pass);
 //DisposeModule(llvmMod);  // Throws assertion!!! :-(((

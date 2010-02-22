@@ -2,6 +2,9 @@
 to the header file @{llvm-c/Analysis.h@} of the LLVM C binding.
 @$@<analysis@>==@{
 @<analysisConstants@>
+@<Analyse modules@>
+@<Analyse functions@>
+@<View call graphs@>
 @}
 
 @D The usage of the C constants is really awkward because they are
@@ -12,9 +15,44 @@ Thus we redefine the constants.
 @$@<analysisConstants@>==@{
 type VerifierFailureAction int
 const (
-  AbortProcessAction = iota; /* verifier will print to stderr and abort() */
-  PrintMessageAction;        /* verifier will print to stderr and return 1 */
-  ReturnStatusAction;        /* verifier will just return 1 */
+    AbortProcessAction = iota; /* verifier will print to stderr and abort() */
+    PrintMessageAction;        /* verifier will print to stderr and return 1 */
+    ReturnStatusAction;        /* verifier will just return 1 */
 )
+@}
+
+@D Verifies that a module is valid, taking the specified action if not.
+Optionally returns a human-readable description of any invalid constructs.
+OutMessage must be disposed with LLVMDisposeMessage.
+@$@<Analyse modules@>==@{
+func VerifyModule(llvmMod Module) {
+    var error *C.char = nil;
+    C.LLVMVerifyModule(C.LLVMModuleRef(llvmMod),
+                       C.LLVMVerifierFailureAction(AbortProcessAction),
+                       &error);
+    // Handler == LLVMAbortProcessAction -> No need to check errors:
+    C.LLVMDisposeMessage(error);
+}
+@}
+
+@D Verifies that a single function is valid, taking the specified action.
+Useful for debugging.
+@$@<Analyse functions@>==@{
+func VerifyFunction(fun Value, action VerifierFailureAction) int {
+    return int(C.LLVMVerifyFunction(C.LLVMValueRef(fun),
+                                    C.LLVMVerifierFailureAction(action)));
+}
+@}
+
+@D Open up a ghostview window that displays the CFG of the current function.
+Useful for debugging.
+@$@<View call graphs@>==@{
+func ViewFunctionCFG(fun Value) {
+    C.LLVMViewFunctionCFG(C.LLVMValueRef(fun));
+}
+
+func ViewFunctionCFGOnly(fun Value) {
+    C.LLVMViewFunctionCFGOnly(C.LLVMValueRef(fun));
+}
 @}
 

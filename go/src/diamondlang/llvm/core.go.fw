@@ -1,19 +1,17 @@
 @C The @{core@} macro contains wrapper functions corresponding
 to the header file @{llvm-c/Core.h@} of the LLVM C binding.
 @$@<core@>==@{
-type Type         C.LLVMTypeRef;
-type Value        C.LLVMValueRef;
-type BasicBlock   C.LLVMBasicBlockRef;
-type Builder      C.LLVMBuilderRef;
+type Type           C.LLVMTypeRef;
+type Value          C.LLVMValueRef;
+type BasicBlock     C.LLVMBasicBlockRef;
+type Builder        C.LLVMBuilderRef;
+type ModuleProvider C.LLVMModuleProviderRef;
 
 @<coreConstants@>
 @<Operations on contexts@>
 @<Operations on modules@>
 @<Operations on integer types@>
 @<Operations on function types@>
-@<Operations on functions@>
-@<Operations on parameters@>
-@<Operations on basic blocks@>
 @<Operations on instruction builders@>
 @<Operations on values@>
 @}
@@ -85,6 +83,7 @@ type Module C.LLVMModuleRef;
 @<ModuleCreateWithNameInContext@>
 @<DisposeModule@>
 @<DumpModule@>
+@<Module providers@>
 @}
 
 @E Create a LLVM module with the given name and the global LLVM context.
@@ -121,6 +120,19 @@ This is especially nice for debugging problems.
 @$@<DumpModule@>==@{
 func DumpModule(llvmModule Module) {
   C.LLVMDumpModule(C.LLVMModuleRef(llvmModule));
+}
+@}
+
+@E A module provider encapsulates a module, taking ownership of it.
+When a module provider is destroyed the contained module is destroyed as well.
+@$@<Module providers@>==@{
+func CreateModuleProviderForExistingModule(mod Module) ModuleProvider {
+    return ModuleProvider(C.LLVMCreateModuleProviderForExistingModule(
+                                C.LLVMModuleRef(mod)));
+}
+
+func DisposeModuleProvider(modProvider ModuleProvider) {
+    C.LLVMDisposeModuleProvider(C.LLVMModuleProviderRef(modProvider));
 }
 @}
 
@@ -217,217 +229,6 @@ func GetReturnType(functionType Type) Type {
 
 func CountParamTypes(functionType Type) uint {
     return uint(C.LLVMCountParamTypes(C.LLVMTypeRef(functionType)));
-}
-@}
-
-
-@D LLVM supports function types.
-So functions can be first class types.
-@$@<Operations on functions@>==@{
-func AddFunction(mod Module, funcName string, functionType Type) Value {
-    var ret Value;
-    callWithString(func(s *C.char){
-        ret = Value(C.LLVMAddFunction(C.LLVMModuleRef(mod), s,
-                                C.LLVMTypeRef(functionType)));
-    }, funcName);
-    return ret;
-}
-
-func GetNamedFunction(mod Module, funcName string) Value {
-    var ret Value;
-    callWithString(func(s *C.char){
-        ret = Value(C.LLVMGetNamedFunction(C.LLVMModuleRef(mod), s));
-    }, funcName);
-    return ret;
-}
-
-func GetFirstFunction(mod Module) Value {
-    return Value(C.LLVMGetFirstFunction(C.LLVMModuleRef(mod)));
-}
-
-func GetLastFunction(mod Module) Value {
-    return Value(C.LLVMGetLastFunction(C.LLVMModuleRef(mod)));
-}
-
-func GetNextFunction(fun Value) Value {
-    return Value(C.LLVMGetNextFunction(C.LLVMValueRef(fun)));
-}
-
-func GetPreviousFunction(fun Value) Value {
-    return Value(C.LLVMGetPreviousFunction(C.LLVMValueRef(fun)));
-}
-
-func DeleteFunction(fun Value) {
-    C.LLVMDeleteFunction(C.LLVMValueRef(fun));
-}
-
-func GetIntrinsicID(fun Value) uint {
-    return uint(C.LLVMGetIntrinsicID(C.LLVMValueRef(fun)));
-}
-
-func GetFunctionCallConv(fun Value) CallConv {
-    return CallConv(C.LLVMGetFunctionCallConv(C.LLVMValueRef(fun)));
-}
-
-func SetFunctionCallConv(fun Value, callConv CallConv) {
-    C.LLVMSetFunctionCallConv(C.LLVMValueRef(fun), C.unsigned(callConv));
-}
-
-func GetGC(fun Value) string {
-    return C.GoString(C.LLVMGetGC(C.LLVMValueRef(fun)));
-}
-
-func SetGC(fun Value, gcName string) {
-    callWithString(func(s *C.char){
-        C.LLVMSetGC(C.LLVMValueRef(fun), s);
-    }, gcName);
-}
-@}
-
-
-@D LLVM operations on function parameters.
-@$@<Operations on parameters@>==@{
-func CountParams(fun Value) uint {
-    return uint(C.LLVMCountParams(C.LLVMValueRef(fun)));
-}
-
-
-func GetParams(fun Value) []Value {
-    tmp := make([]C.LLVMValueRef, CountParams(fun));
-    C.LLVMGetParams(C.LLVMValueRef(fun), &tmp[0]);
-    ret := make([]Value, len(tmp));
-    for i := 0; i < len(tmp); i++ {
-        ret[i] = Value(tmp[i]);
-    }
-    return ret;
-}
-
-func GetParam(fun Value, idx uint) Value {
-    return Value(C.LLVMGetParam(C.LLVMValueRef(fun), C.unsigned(idx)));
-}
-
-func GetParamParent(inst Value) Value {
-    return Value(C.LLVMGetParamParent(C.LLVMValueRef(inst)));
-}
-
-func GetFirstParam(fun Value) Value {
-    return Value(C.LLVMGetFirstParam(C.LLVMValueRef(fun)));
-}
-
-func GetLastParam(fun Value) Value {
-    return Value(C.LLVMGetLastParam(C.LLVMValueRef(fun)));
-}
-
-func GetNextParam(arg Value) Value {
-    return Value(C.LLVMGetNextParam(C.LLVMValueRef(arg)));
-}
-
-func GetPreviousParam(arg Value) Value {
-    return Value(C.LLVMGetPreviousParam(C.LLVMValueRef(arg)));
-}
-
-func SetParamAlignment(arg Value, align uint) {
-    C.LLVMSetParamAlignment(C.LLVMValueRef(arg), C.unsigned(align));
-}
-@}
-
-@D LLVM operations on basic blocks (parts of function bodies).
-@$@<Operations on basic blocks@>==@{
-func BasicBlockAsValue(basicBlock BasicBlock) Value {
-    return Value(C.LLVMBasicBlockAsValue(C.LLVMBasicBlockRef(basicBlock)));
-}
-
-func ValueIsBasicBlock(val Value) bool {
-    return 0 != C.LLVMValueIsBasicBlock(C.LLVMValueRef(val));
-}
-
-func ValueAsBasicBlock(val Value) BasicBlock {
-    return BasicBlock(C.LLVMValueAsBasicBlock(C.LLVMValueRef(val)));
-}
-
-func GetBasicBlockParent(basicBlock BasicBlock) Value {
-    return Value(C.LLVMGetBasicBlockParent(C.LLVMBasicBlockRef(basicBlock)));
-}
-
-func CountBasicBlocks(fun Value) uint {
-    return uint(C.LLVMCountBasicBlocks(C.LLVMValueRef(fun)));
-}
-
-func GetBasicBlocks(fun Value) []BasicBlock {
-    tmp := make([]C.LLVMBasicBlockRef, CountBasicBlocks(fun));
-    C.LLVMGetBasicBlocks(C.LLVMValueRef(fun), &tmp[0]);
-    ret := make([]BasicBlock, len(tmp));
-    for i := 0; i < len(tmp); i++ {
-        ret[i] = BasicBlock(tmp[i]);
-    }
-    return ret;
-}
-
-func GetFirstBasicBlock(fun Value) BasicBlock {
-    return BasicBlock(C.LLVMGetFirstBasicBlock(C.LLVMValueRef(fun)));
-}
-
-func GetLastBasicBlock(fun Value) BasicBlock {
-    return BasicBlock(C.LLVMGetLastBasicBlock(C.LLVMValueRef(fun)));
-}
-
-func GetNextBasicBlock(basicBlock BasicBlock) BasicBlock {
-    return BasicBlock(C.LLVMGetNextBasicBlock(
-               C.LLVMBasicBlockRef(basicBlock)))
-}
-
-func GetPreviousBasicBlock(basicBlock BasicBlock) BasicBlock {
-    return BasicBlock(C.LLVMGetPreviousBasicBlock(
-               C.LLVMBasicBlockRef(basicBlock)))
-}
-
-func GetEntryBasicBlock(fun Value) BasicBlock {
-    return BasicBlock(C.LLVMGetEntryBasicBlock(C.LLVMValueRef(fun)));
-}
-
-func AppendBasicBlockInContext(ctx Context, fun Value,
-                               blockName string) BasicBlock {
-    var ret BasicBlock;
-    callWithString(func(s *C.char){
-        ret = BasicBlock(C.LLVMAppendBasicBlockInContext(
-                             C.LLVMContextRef(ctx),
-                             C.LLVMValueRef(fun),
-                             s));
-    }, blockName);
-    return ret;
-}
-
-func InsertBasicBlockInContext(ctx Context, basicBlock BasicBlock,
-                               blockName string) BasicBlock {
-    var ret BasicBlock;
-    callWithString(func(s *C.char){
-        ret = BasicBlock(C.LLVMInsertBasicBlockInContext(
-                             C.LLVMContextRef(ctx),
-                             C.LLVMBasicBlockRef(basicBlock),
-                             s));
-    }, blockName);
-    return ret;
-}
-
-func AppendBasicBlock(fun Value, blockName string) BasicBlock {
-    var ret BasicBlock;
-    callWithString(func(s *C.char){
-        ret = BasicBlock(C.LLVMAppendBasicBlock(C.LLVMValueRef(fun), s));
-    }, blockName);
-    return ret;
-}
-
-func InsertBasicBlock(basicBlock BasicBlock, blockName string) BasicBlock {
-    var ret BasicBlock;
-    callWithString(func(s *C.char){
-        ret = BasicBlock(C.LLVMInsertBasicBlock(
-                             C.LLVMBasicBlockRef(basicBlock), s));
-    }, blockName);
-    return ret;
-}
-
-func DeleteBasicBlock(basicBlock BasicBlock) {
-    C.LLVMDeleteBasicBlock(C.LLVMBasicBlockRef(basicBlock));
 }
 @}
 
@@ -771,33 +572,127 @@ func BuildCall(builder Builder, fun Value, args []Value, instrName string)
     }, instrName);
     return ret;
 }
-/*
-LLVMValueRef LLVMBuildSelect(LLVMBuilderRef, LLVMValueRef If,
-                             LLVMValueRef Then, LLVMValueRef Else,
-                             const char *Name);
-LLVMValueRef LLVMBuildVAArg(LLVMBuilderRef, LLVMValueRef List, LLVMTypeRef Ty,
-                            const char *Name);
-LLVMValueRef LLVMBuildExtractElement(LLVMBuilderRef, LLVMValueRef VecVal,
-                                     LLVMValueRef Index, const char *Name);
-LLVMValueRef LLVMBuildInsertElement(LLVMBuilderRef, LLVMValueRef VecVal,
-                                    LLVMValueRef EltVal, LLVMValueRef Index,
-                                    const char *Name);
-LLVMValueRef LLVMBuildShuffleVector(LLVMBuilderRef, LLVMValueRef V1,
-                                    LLVMValueRef V2, LLVMValueRef Mask,
-                                    const char *Name);
-LLVMValueRef LLVMBuildExtractValue(LLVMBuilderRef, LLVMValueRef AggVal,
-                                   unsigned Index, const char *Name);
-LLVMValueRef LLVMBuildInsertValue(LLVMBuilderRef, LLVMValueRef AggVal,
-                                  LLVMValueRef EltVal, unsigned Index,
-                                  const char *Name);
 
-LLVMValueRef LLVMBuildIsNull(LLVMBuilderRef, LLVMValueRef Val,
-                             const char *Name);
-LLVMValueRef LLVMBuildIsNotNull(LLVMBuilderRef, LLVMValueRef Val,
-                                const char *Name);
-LLVMValueRef LLVMBuildPtrDiff(LLVMBuilderRef, LLVMValueRef LHS,
-                              LLVMValueRef RHS, const char *Name);
-*/
+func BuildSelect(builder Builder, ifVal Value, thenVal Value, elseVal Value,
+                 instrName string) Value {
+
+    var ret Value;
+    callWithString(func(s *C.char){
+        ret = Value(C.LLVMBuildSelect(C.LLVMBuilderRef(builder),
+                                      C.LLVMValueRef(ifVal),
+                                      C.LLVMValueRef(thenVal),
+                                      C.LLVMValueRef(elseVal),
+                                      s));
+    }, instrName);
+    return ret;
+}
+
+func BuildVAArg(builder Builder, list Value, typ Type, instrName string) Value {
+    var ret Value;
+    callWithString(func(s *C.char){
+        ret = Value(C.LLVMBuildVAArg(C.LLVMBuilderRef(builder),
+                                     C.LLVMValueRef(list),
+                                     C.LLVMTypeRef(typ),
+                                     s));
+    }, instrName);
+    return ret;
+}
+
+func BuildExtractElement(builder Builder, vecVal Value, idx Value,
+                         instrName string) Value {
+    var ret Value;
+    callWithString(func(s *C.char){
+        ret = Value(C.LLVMBuildExtractElement(C.LLVMBuilderRef(builder),
+                                              C.LLVMValueRef(vecVal),
+                                              C.LLVMValueRef(idx),
+                                              s));
+    }, instrName);
+    return ret;
+}
+
+func BuildInsertElement(builder Builder, vecVal Value, insVal Value, idx Value,
+                        instrName string) Value {
+    var ret Value;
+    callWithString(func(s *C.char){
+        ret = Value(C.LLVMBuildInsertElement(C.LLVMBuilderRef(builder),
+                                             C.LLVMValueRef(vecVal),
+                                             C.LLVMValueRef(insVal),
+                                             C.LLVMValueRef(idx),
+                                             s));
+    }, instrName);
+    return ret;
+}
+
+func BuildShuffleVector(builder Builder, vec1 Value, vec2 Value, mask Value,
+                        instrName string) Value {
+    var ret Value;
+    callWithString(func(s *C.char){
+        ret = Value(C.LLVMBuildShuffleVector(C.LLVMBuilderRef(builder),
+                                             C.LLVMValueRef(vec1),
+                                             C.LLVMValueRef(vec2),
+                                             C.LLVMValueRef(mask),
+                                             s));
+    }, instrName);
+    return ret;
+}
+
+func BuildExtractValue(builder Builder, aggVal Value, idx uint,
+                       instrName string) Value {
+    var ret Value;
+    callWithString(func(s *C.char){
+        ret = Value(C.LLVMBuildExtractValue(C.LLVMBuilderRef(builder),
+                                            C.LLVMValueRef(aggVal),
+                                            C.unsigned(idx),
+                                            s));
+    }, instrName);
+    return ret;
+}
+
+func BuildInsertValue(builder Builder, aggVal Value, insVal Value, idx uint,
+                      instrName string) Value {
+    var ret Value;
+    callWithString(func(s *C.char){
+        ret = Value(C.LLVMBuildInsertValue(C.LLVMBuilderRef(builder),
+                                             C.LLVMValueRef(aggVal),
+                                             C.LLVMValueRef(insVal),
+                                             C.unsigned(idx),
+                                             s));
+    }, instrName);
+    return ret;
+}
+
+func BuildIsNull(builder Builder, val Value, instrName string) Value {
+    var ret Value;
+    callWithString(func(s *C.char){
+        ret = Value(C.LLVMBuildIsNull(C.LLVMBuilderRef(builder),
+                                      C.LLVMValueRef(val),
+                                      s));
+    }, instrName);
+    return ret;
+}
+
+func BuildIsNotNull(builder Builder, val Value, instrName string) Value {
+    var ret Value;
+    callWithString(func(s *C.char){
+        ret = Value(C.LLVMBuildIsNotNull(C.LLVMBuilderRef(builder),
+                                         C.LLVMValueRef(val),
+                                         s));
+    }, instrName);
+    return ret;
+}
+
+func BuildPtrDiff(builder Builder, lhs Value, rhs Value, instrName string)
+        Value {
+
+    var ret Value;
+    callWithString(func(s *C.char){
+        ret = Value(C.LLVMBuildPtrDiff(C.LLVMBuilderRef(builder),
+                                       C.LLVMValueRef(lhs),
+                                       C.LLVMValueRef(rhs),
+                                       s));
+    }, instrName);
+    return ret;
+}
 @}
 
 
@@ -807,6 +702,10 @@ The bulk of LLVM's object model consists of values, which comprise a very
 rich type hierarchy.
 @$@<Operations on values@>==@{
 @<Operations on scalar constants@>
+@<Operations on functions@>
+@<Operations on parameters@>
+@<Operations on basic blocks@>
+@<Operations on phi nodes@>
 @}
 
 @E Operations on LLVM scalar constants.
@@ -826,5 +725,249 @@ func ConstIntOfString(intType Type, val string, radix uint8) Value {
                                                   C.uint8_t(radix)));
     }, val);
     return ret;
+}
+@}
+
+@E LLVM supports function types.
+So functions can be first class types.
+@$@<Operations on functions@>==@{
+func AddFunction(mod Module, funcName string, functionType Type) Value {
+    var ret Value;
+    callWithString(func(s *C.char){
+        ret = Value(C.LLVMAddFunction(C.LLVMModuleRef(mod), s,
+                                C.LLVMTypeRef(functionType)));
+    }, funcName);
+    return ret;
+}
+
+func GetNamedFunction(mod Module, funcName string) Value {
+    var ret Value;
+    callWithString(func(s *C.char){
+        ret = Value(C.LLVMGetNamedFunction(C.LLVMModuleRef(mod), s));
+    }, funcName);
+    return ret;
+}
+
+func GetFirstFunction(mod Module) Value {
+    return Value(C.LLVMGetFirstFunction(C.LLVMModuleRef(mod)));
+}
+
+func GetLastFunction(mod Module) Value {
+    return Value(C.LLVMGetLastFunction(C.LLVMModuleRef(mod)));
+}
+
+func GetNextFunction(fun Value) Value {
+    return Value(C.LLVMGetNextFunction(C.LLVMValueRef(fun)));
+}
+
+func GetPreviousFunction(fun Value) Value {
+    return Value(C.LLVMGetPreviousFunction(C.LLVMValueRef(fun)));
+}
+
+func DeleteFunction(fun Value) {
+    C.LLVMDeleteFunction(C.LLVMValueRef(fun));
+}
+
+func GetIntrinsicID(fun Value) uint {
+    return uint(C.LLVMGetIntrinsicID(C.LLVMValueRef(fun)));
+}
+
+func GetFunctionCallConv(fun Value) CallConv {
+    return CallConv(C.LLVMGetFunctionCallConv(C.LLVMValueRef(fun)));
+}
+
+func SetFunctionCallConv(fun Value, callConv CallConv) {
+    C.LLVMSetFunctionCallConv(C.LLVMValueRef(fun), C.unsigned(callConv));
+}
+
+func GetGC(fun Value) string {
+    return C.GoString(C.LLVMGetGC(C.LLVMValueRef(fun)));
+}
+
+func SetGC(fun Value, gcName string) {
+    callWithString(func(s *C.char){
+        C.LLVMSetGC(C.LLVMValueRef(fun), s);
+    }, gcName);
+}
+@}
+
+@E LLVM operations on function parameters.
+@$@<Operations on parameters@>==@{
+func CountParams(fun Value) uint {
+    return uint(C.LLVMCountParams(C.LLVMValueRef(fun)));
+}
+
+
+func GetParams(fun Value) []Value {
+    tmp := make([]C.LLVMValueRef, CountParams(fun));
+    C.LLVMGetParams(C.LLVMValueRef(fun), &tmp[0]);
+    ret := make([]Value, len(tmp));
+    for i := 0; i < len(tmp); i++ {
+        ret[i] = Value(tmp[i]);
+    }
+    return ret;
+}
+
+func GetParam(fun Value, idx uint) Value {
+    return Value(C.LLVMGetParam(C.LLVMValueRef(fun), C.unsigned(idx)));
+}
+
+func GetParamParent(inst Value) Value {
+    return Value(C.LLVMGetParamParent(C.LLVMValueRef(inst)));
+}
+
+func GetFirstParam(fun Value) Value {
+    return Value(C.LLVMGetFirstParam(C.LLVMValueRef(fun)));
+}
+
+func GetLastParam(fun Value) Value {
+    return Value(C.LLVMGetLastParam(C.LLVMValueRef(fun)));
+}
+
+func GetNextParam(arg Value) Value {
+    return Value(C.LLVMGetNextParam(C.LLVMValueRef(arg)));
+}
+
+func GetPreviousParam(arg Value) Value {
+    return Value(C.LLVMGetPreviousParam(C.LLVMValueRef(arg)));
+}
+
+func SetParamAlignment(arg Value, align uint) {
+    C.LLVMSetParamAlignment(C.LLVMValueRef(arg), C.unsigned(align));
+}
+@}
+
+@E LLVM operations on basic blocks (parts of function bodies).
+@$@<Operations on basic blocks@>==@{
+func BasicBlockAsValue(basicBlock BasicBlock) Value {
+    return Value(C.LLVMBasicBlockAsValue(C.LLVMBasicBlockRef(basicBlock)));
+}
+
+func ValueIsBasicBlock(val Value) bool {
+    return 0 != C.LLVMValueIsBasicBlock(C.LLVMValueRef(val));
+}
+
+func ValueAsBasicBlock(val Value) BasicBlock {
+    return BasicBlock(C.LLVMValueAsBasicBlock(C.LLVMValueRef(val)));
+}
+
+func GetBasicBlockParent(basicBlock BasicBlock) Value {
+    return Value(C.LLVMGetBasicBlockParent(C.LLVMBasicBlockRef(basicBlock)));
+}
+
+func CountBasicBlocks(fun Value) uint {
+    return uint(C.LLVMCountBasicBlocks(C.LLVMValueRef(fun)));
+}
+
+func GetBasicBlocks(fun Value) []BasicBlock {
+    tmp := make([]C.LLVMBasicBlockRef, CountBasicBlocks(fun));
+    C.LLVMGetBasicBlocks(C.LLVMValueRef(fun), &tmp[0]);
+    ret := make([]BasicBlock, len(tmp));
+    for i := 0; i < len(tmp); i++ {
+        ret[i] = BasicBlock(tmp[i]);
+    }
+    return ret;
+}
+
+func GetFirstBasicBlock(fun Value) BasicBlock {
+    return BasicBlock(C.LLVMGetFirstBasicBlock(C.LLVMValueRef(fun)));
+}
+
+func GetLastBasicBlock(fun Value) BasicBlock {
+    return BasicBlock(C.LLVMGetLastBasicBlock(C.LLVMValueRef(fun)));
+}
+
+func GetNextBasicBlock(basicBlock BasicBlock) BasicBlock {
+    return BasicBlock(C.LLVMGetNextBasicBlock(
+               C.LLVMBasicBlockRef(basicBlock)))
+}
+
+func GetPreviousBasicBlock(basicBlock BasicBlock) BasicBlock {
+    return BasicBlock(C.LLVMGetPreviousBasicBlock(
+               C.LLVMBasicBlockRef(basicBlock)))
+}
+
+func GetEntryBasicBlock(fun Value) BasicBlock {
+    return BasicBlock(C.LLVMGetEntryBasicBlock(C.LLVMValueRef(fun)));
+}
+
+func AppendBasicBlockInContext(ctx Context, fun Value,
+                               blockName string) BasicBlock {
+    var ret BasicBlock;
+    callWithString(func(s *C.char){
+        ret = BasicBlock(C.LLVMAppendBasicBlockInContext(
+                             C.LLVMContextRef(ctx),
+                             C.LLVMValueRef(fun),
+                             s));
+    }, blockName);
+    return ret;
+}
+
+func InsertBasicBlockInContext(ctx Context, basicBlock BasicBlock,
+                               blockName string) BasicBlock {
+    var ret BasicBlock;
+    callWithString(func(s *C.char){
+        ret = BasicBlock(C.LLVMInsertBasicBlockInContext(
+                             C.LLVMContextRef(ctx),
+                             C.LLVMBasicBlockRef(basicBlock),
+                             s));
+    }, blockName);
+    return ret;
+}
+
+func AppendBasicBlock(fun Value, blockName string) BasicBlock {
+    var ret BasicBlock;
+    callWithString(func(s *C.char){
+        ret = BasicBlock(C.LLVMAppendBasicBlock(C.LLVMValueRef(fun), s));
+    }, blockName);
+    return ret;
+}
+
+func InsertBasicBlock(basicBlock BasicBlock, blockName string) BasicBlock {
+    var ret BasicBlock;
+    callWithString(func(s *C.char){
+        ret = BasicBlock(C.LLVMInsertBasicBlock(
+                             C.LLVMBasicBlockRef(basicBlock), s));
+    }, blockName);
+    return ret;
+}
+
+func DeleteBasicBlock(basicBlock BasicBlock) {
+    C.LLVMDeleteBasicBlock(C.LLVMBasicBlockRef(basicBlock));
+}
+@}
+
+@E I don't currently know what phi-nodes are.
+They might be a list of basic blocks (then, else, ...)?
+@$@<Operations on phi nodes@>==@{
+func AddIncoming(phiNode Value, incomingVals []Value,
+                                incomingBlocks []BasicBlock) {
+
+    tmpVals := make([]C.LLVMValueRef, len(incomingVals));
+    for i := 0; i < len(tmpVals); i++ {
+        tmpVals[i] = C.LLVMValueRef(incomingVals[i]);
+    }
+
+    tmpBlocks := make([]C.LLVMBasicBlockRef, len(tmpVals));
+    for i := 0; i < len(tmpBlocks); i++ {
+        tmpBlocks[i] = C.LLVMBasicBlockRef(incomingBlocks[i]);
+    }
+
+    C.LLVMAddIncoming(C.LLVMValueRef(phiNode), &tmpVals[0], &tmpBlocks[0],
+                      C.unsigned(len(tmpVals)));
+}
+
+func CountIncoming(phiNode Value) uint {
+    return uint(C.LLVMCountIncoming(C.LLVMValueRef(phiNode)));
+}
+
+func GetIncomingValue(phiNode Value, idx uint) Value {
+    return Value(C.LLVMGetIncomingValue(C.LLVMValueRef(phiNode),
+                                        C.unsigned(idx)));
+}
+
+func GetIncomingBlock(phiNode Value, idx uint) BasicBlock {
+    return BasicBlock(C.LLVMGetIncomingBlock(C.LLVMValueRef(phiNode),
+                                             C.unsigned(idx)));
 }
 @}
