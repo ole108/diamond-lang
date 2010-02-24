@@ -135,17 +135,17 @@ func dirtyTestFunc(num int) {
 //  DumpModule(llvmMod);
   // Optimizations:
   fmt.Println("\n\nOptimizing:");
-  var pass C.LLVMPassManagerRef = C.LLVMCreatePassManager();
-  C.LLVMAddTargetData(C.LLVMGetExecutionEngineTargetData(
-        C.LLVMExecutionEngineRef(engine)), pass);
-  C.LLVMAddConstantPropagationPass(pass);
-  C.LLVMAddInstructionCombiningPass(pass);
-  C.LLVMAddPromoteMemoryToRegisterPass(pass);
+  pass := CreatePassManager();
+  AddTargetData(GetExecutionEngineTargetData(engine), pass);
+  C.LLVMAddConstantPropagationPass(C.LLVMPassManagerRef(pass));
+  C.LLVMAddInstructionCombiningPass(C.LLVMPassManagerRef(pass));
+  C.LLVMAddPromoteMemoryToRegisterPass(C.LLVMPassManagerRef(pass));
   // Demotes every possible value to memory:
-  C.LLVMAddDemoteMemoryToRegisterPass(pass);
-  C.LLVMAddGVNPass(pass);
-  C.LLVMAddCFGSimplificationPass(pass);
-  C.LLVMRunPassManager(pass, C.LLVMModuleRef(llvmMod));
+  C.LLVMAddDemoteMemoryToRegisterPass(C.LLVMPassManagerRef(pass));
+  C.LLVMAddGVNPass(C.LLVMPassManagerRef(pass));
+  C.LLVMAddCFGSimplificationPass(C.LLVMPassManagerRef(pass));
+  opt := RunPassManager(pass, llvmMod);
+  fmt.Println("Found optimization:", opt);
   DumpModule(llvmMod);
 
   fmt.Println("");
@@ -159,8 +159,8 @@ func dirtyTestFunc(num int) {
 
   DisposeExecutionEngine(engine);
   DisposeBuilder(builder);
-  C.LLVMDisposePassManager(pass);
-//DisposeModule(llvmMod);  // Throws assertion!!! :-(((
+  DisposePassManager(pass);
+//DisposeModuleProvider(provider);  // Throws assertion!!! :-(((
 
   fmt.Println("Survived: ALL");
 }

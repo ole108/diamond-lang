@@ -1,16 +1,26 @@
 @C The @{target@} macro contains wrapper functions corresponding
 to the header file @{llvm-c/Target.h@} of the LLVM C binding.
 @$@<target@>==@{
-@<InitializeNativeTarget@>
+@<Initialize native target@>
+@<Add target data@>
 @}
 
 
 @D A LLVM target is a platform like X86 or ARM.
 This little functions initializes LLVM to use the right one.
 This is needed for the JIT.
-@$@<InitializeNativeTarget@>==@{
+@$@<Initialize native target@>==@{
 func InitializeNativeTarget() {
   C.LLVMInitializeNativeTarget();
+}
+@}
+
+@D Adds target data information to a pass manager. This does not take ownership
+of the target data.
+@$@<Add target data@>==@{
+func AddTargetData(targetData TargetData, passManager PassManager) {
+    C.LLVMAddTargetData(C.LLVMTargetDataRef(targetData),
+                        C.LLVMPassManagerRef(passManager));
 }
 @}
 

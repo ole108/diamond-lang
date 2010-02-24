@@ -6,6 +6,7 @@ type Value          C.LLVMValueRef;
 type BasicBlock     C.LLVMBasicBlockRef;
 type Builder        C.LLVMBuilderRef;
 type ModuleProvider C.LLVMModuleProviderRef;
+type PassManager    C.LLVMPassManagerRef;
 
 @<coreConstants@>
 @<Operations on contexts@>
@@ -14,6 +15,7 @@ type ModuleProvider C.LLVMModuleProviderRef;
 @<Operations on function types@>
 @<Operations on instruction builders@>
 @<Operations on values@>
+@<Operations on pass managers@>
 @}
 
 @D The usage of the C constants is really awkward because they are
@@ -971,3 +973,87 @@ func GetIncomingBlock(phiNode Value, idx uint) BasicBlock {
                                              C.unsigned(idx)));
 }
 @}
+
+
+@D Pass managers are used for optimization.
+Pass managers come in two flavours, module pass managers and
+function pass managers.
+@$@<Operations on pass managers@>==@{
+@<Create module pass manager@>
+@<Run module pass manager@>
+
+@<Create function pass manager@>
+@<Initialize function pass manager@>
+@<Run function pass manager@>
+@<Finalize function pass manager@>
+@<Dispose any pass manager@>
+@}
+
+@E Constructs a new whole-module pass pipeline. This type of pipeline is
+suitable for link-time optimization and whole-module transformations.
+@$@<Create module pass manager@>==@{
+func CreatePassManager() PassManager {
+    return PassManager(C.LLVMCreatePassManager());
+}
+@}
+
+@E Initializes, executes on the provided module, and finalizes all of the
+passes scheduled in the pass manager. Returns true if any of the passes
+modified the module, false otherwise.
+@$@<Run module pass manager@>==@{
+func RunPassManager(passManager PassManager, mod Module) bool {
+    ret := C.LLVMRunPassManager(C.LLVMPassManagerRef(passManager),
+                                C.LLVMModuleRef(mod));
+    return ret != 0;
+}
+@}
+
+
+@E Constructs a new function-by-function pass pipeline over the module
+provider. It does not take ownership of the module provider. This type of
+pipeline is suitable for code generation and JIT compilation tasks.
+@$@<Create function pass manager@>==@{
+func CreateFunctionPassManager(modProvider ModuleProvider) PassManager {
+    return PassManager(C.LLVMCreateFunctionPassManager(
+                C.LLVMModuleProviderRef(modProvider)));
+}
+@}
+
+@E Initializes all of the function passes scheduled in the function pass
+manager. Returns true if any of the passes modified the module, false otherwise.
+@$@<Initialize function pass manager@>==@{
+func InitializeFunctionPassManager(passManager PassManager) bool {
+    ret := C.LLVMInitializeFunctionPassManager(
+                C.LLVMPassManagerRef(passManager));
+    return ret != 0;
+}
+@}
+
+@E Executes all of the function passes scheduled in the function pass manager
+on the provided function. Returns true if any of the passes modified the
+function, false otherwise.
+@$@<Run function pass manager@>==@{
+func RunFunctionPassManager(passManager PassManager, fun Value) bool {
+    ret := C.LLVMRunFunctionPassManager(C.LLVMPassManagerRef(passManager),
+                                        C.LLVMValueRef(fun));
+    return ret != 0;
+}
+@}
+
+@E Finalizes all of the function passes scheduled in in the function pass
+manager. Returns true if any of the passes modified the module, false otherwise.
+@$@<Finalize function pass manager@>==@{
+func FinalizeFunctionPassManager(passManager PassManager) bool {
+    ret := C.LLVMFinalizeFunctionPassManager(C.LLVMPassManagerRef(passManager));
+    return ret != 0;
+}
+@}
+
+@E Frees the memory of a pass pipeline. For function pipelines, does not free
+the module provider.
+@$@<Dispose any pass manager@>==@{
+func DisposePassManager(passManager PassManager) {
+    C.LLVMDisposePassManager(C.LLVMPassManagerRef(passManager));
+}
+@}
+

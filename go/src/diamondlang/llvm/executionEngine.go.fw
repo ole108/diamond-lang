@@ -2,6 +2,7 @@
 to the header file @{llvm-c/ExecutionEngine.h@} of the LLVM C binding.
 @$@<executionEngine@>==@{
 type ExecutionEngine  C.LLVMExecutionEngineRef;
+type TargetData       C.LLVMTargetDataRef;
 
 @<LinkIns@>
 @<Operations on execution engines@>
@@ -47,6 +48,11 @@ func CreateJITCompiler(modProvider ModuleProvider, optLevel uint)
         os.Exit(1);
     }
     return ExecutionEngine(engine);
+}
+
+func GetExecutionEngineTargetData(engine ExecutionEngine) TargetData {
+    return TargetData(C.LLVMGetExecutionEngineTargetData(
+                C.LLVMExecutionEngineRef(engine)));
 }
 
 func DisposeExecutionEngine(engine ExecutionEngine) {
