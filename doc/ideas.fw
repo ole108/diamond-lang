@@ -519,6 +519,30 @@ Of course we will still need the most important ones for side data
 
 A lot of things have to be explored and tested here.
 
+@A@<Typed Strings@>
+There is a big need for many more types beside Strings and numeric types:
+date, time, timestamp, URL, filename, regular expression string, ...
+
+This is a list that can get quite long.
+And forcing it all in a syntax with optimal litarals for all of these types
+would become a parsing nightmare.
+
+So the idea is to use typed strings instead.
+Like in Python we use strings with a character [a-zA-Z] prepended to them.
+This gives room for a lot of types and the parser can handle all of them
+in a simple generic way.
+
+Types thought of so far: @+
+date: d"2011-03-21" @+
+email address: e"ole@@..." @+
+file name: f"/home/ole/..." @+
+package: p"diamand/..." @+
+regular expression: r"^[a-z]*$" @+
+time stamp: s"2011-03-21 20:20:34.123" @+
+time: t"20:30:34.123+0200" @+
+URL/URI: u"http://www.google.com" @+
+
+
 
 @O@<dummy.dia@>==@{
 @<Alias Types@>

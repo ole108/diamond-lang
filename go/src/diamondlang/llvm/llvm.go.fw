@@ -126,6 +126,7 @@ func dirtyTestFunc(num int) {
   phi_blocks := []BasicBlock{ iftrue, iffalse };
   AddIncoming(res, phi_vals, phi_blocks);
   BuildRet(builder, res);
+  DisposeBuilder(builder);
 
   VerifyModule(llvmMod);
 
@@ -158,7 +159,6 @@ func dirtyTestFunc(num int) {
   fmt.Println("Result:", C.LLVMGenericValueToInt(exec_res, 0));
 
   DisposeExecutionEngine(engine);
-  DisposeBuilder(builder);
   DisposePassManager(pass);
 //DisposeModuleProvider(provider);  // Throws assertion!!! :-(((
 
